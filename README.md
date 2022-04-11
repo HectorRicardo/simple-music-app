@@ -1,83 +1,80 @@
 # Simple Music App
 
-Android app that implements a small silent music player using the Android Media APIs and native C++
+Android app that implements a complete, fully-fledged architecture for a small music player using the Android Media APIs and native C++
 code.
 
-The following are sections notes that I took while
-reading https://developer.android.com/guide/topics/media.
+The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. However, all the flow and the logic of the app is implemented.
 
-## Music app architecture
+The following section are notes that I took while reading https://developer.android.com/guide/topics/media.
 
-A music player app should be separated into two parts:
+## General concepts: Media app overview architecture
 
-- A `MediaController`: UI that presents player transport controls and displays the player's state.
-    - UI code only communicates with the `MediaController`.
-- A `MediaSession`: entity holding the actual player.
+This first section talks about basic concepts that apply both to video apps and music apps.
+
+A decent media app is separated into two parts:
+
+- A Player that renders the media (audio/video).
+- A UI that issues commands to the player (play, pause, etc..) and displays the player's state.
+
+![A simple media app](docs_images/controller-session.png)
+
+Android uses two classes to represent and decouple these two parts: an instance of `MediaController`, which controls the UI, and an instance of `MediaSession`, which manages the player:
+
+- The `MediaController`:
+    - UI communicates exclusively with the `MediaController` (the UI never calls the player or the `MediaSession` directly).
+    - Issues player commands to the `MediaSession`. Commands can be either:
+        - Built-in, common commands, such as play, pause, stop, and seek.
+        - Extensible custom commands, used to define special behaviors unique to your app.
+    - Receives updates from the `MediaSession` about player state changes in order to update the UI.
+- The `MediaSession`:
     - Responsible for all communication with the player.
     - The player is only called from the `MediaSession`.
-
-![controller-session.png](docs_images/controller-session.png)
-
-The `MediaController` and `MediaSession` communicate with each other using predefined callbacks that
-correspond to standard player actions (play, pause, stop, etc.), as well as extensible custom calls
-used to define special behaviors unique to your app. The `MediaController` translates transport
-control actions into callbacks to the `MediaSession`. It also receives callbacks from the
-`MediaSession` whenever the player state changes in order to update the UI.
+    - Receives commands from the `MediaController`, and forwards these commands to the player.
+    - When the player updates its state, calls the `MediaController` to notify about this update.
 
 ![controller-session-detailed.png](docs_images/controller-session-detailed.png)
 
-### How is state represented?
+A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
+with one or more `MediaController`s simultaneously. This makes it possible for your player to be
+controlled from your app's UI as well as from other places, such as:
+   - Google Assistant.
+   - external hardware media buttons
+   - etc..
 
-The state of a player associated to `MediaSession` is represented by two instances attached to
-the `MediaSession`:
+From the next section onwards, we will talk specifically about music apps
+(no more talking about video apps, unless explicitly mentioned).
 
-- An instance of `PlaybackState`: describes the player's current operational state
-    - State: Playing/Paused/Buffering/Stopped
-    - Player position
-    - Valid controller actions that can be handled in the current state. There are two types of
-      actions:
-        - Built-in, common actions (such as play, pause, rewind).
-        - Custom actions
-- An instance of `MediaMetadata`: describes the material currently playing.
-    - Name of current artist, album, track
-    - Duration of track
-    - Album artwork
+## Design/Architecture of music apps
 
-### Design/Architecture
-
-A `MediaController` can only connect to one `MediaSession` at a time, but a `MediaSession` can
-send/receive callbacks to/from one or more `MediaController`s at a time. This makes it possible for
-your player to be controlled by your app's UI as well as companion devices running Wear OS and
-Android Auto. A music app is expected to handle multiple simultaneous connections.
+An audio player does not always need to have its UI visible. Once it begins to play audio, 
+the player can run as a background task. The user can switch to another app and work while
+continuing to listen.
 
 This design is implemented with a client-server architecture
 
-- The client is an Activity for the UI.
-    - Will hold a `MediaBrowser`, which in turn will hold the `MediaController`.
-- The server is an Android Service for the player (so it runs in the background)
-    - Implemented as `MediaBrowserService`.
+- The server will be an Android service that will hold the player.
+    - An Android service is a long-lived Android component that can run in the background and doesn't need a UI to run.
+    - Implemented as a subclass of `MediaBrowserService`.
     - Will hold the `MediaSession` and the player.
+- The client is an Activity for the UI.
+    - Will hold a `MediaBrowser` that will connect to the `MediaBrowserService`.
+    - Will also hold the `MediaController`.
 
 ![client-service-architecture.png](docs_images/client-service-architecture.png)
 
-**Question: why do we need to introduce yet another layer, the `MediaBrowser`? Doesn't
-the `MediaController` suffice?**
+**Question: why do we need to introduce yet another layer, the `MediaBrowser`-`MediaBrowserService` pair?
+Doesn't the `MediaController`-`MediaSession` pair suffice?**
 
-Two reasons:
+- The `MediaController`-`MediaSession` pair applies both to audio and video apps,
+while the `MediaBrowser`-`MediaBrowserService` pair applies specifically to audio apps only.
+- We forcefully need an Android service so the music can play in the background. A `MediaSession` is not a service, hence we need `MediaBrowserService`.
+- Because we forcefully need `MediaBrowserService`, we also need its counterpart, the `MediaBrowser`. By itself, the `MediaController` is not enough: we need the `MediaBrowser` because it is the only entity capable of communicating with a `MediaBrowserServce`.
 
-1. Because we forcefully need a service (`MediaBrowserService`) to implement the client-server
-   approach for audio apps, we also need the `MediaBrowser`. By itself, the `MediaController` is not
-   enough: we need the `MediaBrowser` because it is the only entity capable of communicating with
-   a `MediaBrowser`
-   service, hence we can't ditch it.
-2. Follow-up on the first reason: a media `MediaController` is used for both client-server
-   architectures (for audio apps) and single-activity architectures (for video apps). Had
-   the `MediaController` been the only necessary component for client-server architectures, the
-   video apps would've been doomed.
+Having a well-defined `MediaSession` allows media sessions (both audio and video sessions) to be controlled not only from your app's UI, but also from other places. In addition to this, having a well-defined `MediaBrowserService` 
 
 A `MediaBrowserService` provides two features:
 
-- It makes it easy for companion devices to discover your app, create their own `MediaController`,
+- It makes it easy for companion devices, like Android Auto and Wear OS, to discover your app, create their own `MediaController`,
   connect to your `MediaSession`, and control playback, without accessing your app's UI activity at
   all.
 - It also provides an optional browsing API that lets clients query the service and build out a
@@ -106,10 +103,22 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
 2. Do the following in the service's `onCreate()` method:
 
     1. Instantiate a `MediaSession`.
-    2. Create and initialize instances of `PlaybackState` and `MediaMetadata` and assign them to the
-       `MediaSession` (caching the builders for reuse)
-        - In order for external media buttons to work, the `PlaybackState` must contain an action
-          matching the intent that the media button sends. This applies to all states.
+    2. Set the initial player state in the `MediaSession`:
+        - The state of a player is represented by two classes:
+            - `PlaybackState`: describes the player's current operational state
+                - State: Playing/Paused/Buffering/Stopped
+                - Player position (for the seekbar)
+                - Valid controller actions (both built-in and custom) that can be handled in the current state.
+                    - These actions define what commands and external hardware media buttons the Player will be able to
+                      respond to in the current state.
+                    - Special case: The `ACTION_PLAY_PAUSE` can only be triggered by an external button. If the player is playing,
+                      it will correspond to a pause command, else it will correspond to a play command.
+            - `MediaMetadata`: describes the material currently playing.
+                - Name of current artist, album, track
+                - Duration of track
+                - Album artwork
+        - Create and initialize instances of `PlaybackState` and `MediaMetadata` and assign them to the
+          `MediaSession` (caching the builders for reuse).
     3. Create an instance of `MediaSession.Callback` and assign it to the `MediaSession`.
     4. Set the media session token.
 
