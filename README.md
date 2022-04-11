@@ -28,17 +28,20 @@ control actions into callbacks to the `MediaSession`. It also receives callbacks
 
 ### How is state represented?
 
-The state of a player associated to `MediaSession` is represented by two instances attached to the `MediaSession`:
+The state of a player associated to `MediaSession` is represented by two instances attached to
+the `MediaSession`:
+
 - An instance of `PlaybackState`: describes the player's current operational state
-  - State: Playing/Paused/Buffering/Stopped
-  - Player position
-  - Valid controller actions that can be handled in the current state. There are two types of actions:
-    - Built-in, common actions (such as play, pause, rewind).
-    - Custom actions
+    - State: Playing/Paused/Buffering/Stopped
+    - Player position
+    - Valid controller actions that can be handled in the current state. There are two types of
+      actions:
+        - Built-in, common actions (such as play, pause, rewind).
+        - Custom actions
 - An instance of `MediaMetadata`: describes the material currently playing.
-  - Name of current artist, album, track
-  - Duration of track
-  - Album artwork
+    - Name of current artist, album, track
+    - Duration of track
+    - Album artwork
 
 ### Design/Architecture
 
@@ -57,19 +60,28 @@ This design is implemented with a client-server architecture
 
 ![client-service-architecture.png](docs_images/client-service-architecture.png)
 
-**Question: why do we need to introduce yet another layer, the `MediaBrowser`? Doesn't the `MediaController` suffice?**
+**Question: why do we need to introduce yet another layer, the `MediaBrowser`? Doesn't
+the `MediaController` suffice?**
 
 Two reasons:
 
-1. Because we forcefully need a service (`MediaBrowserService`) to implement the client-server approach
-for audio apps, we also need the `MediaBrowser`. By itself, the `MediaController` is not enough: we
-need the `MediaBrowser` because it is the only entity capable of communicating with a `MediaBrowser`
-service, hence we can't ditch it.
-2. Follow-up on the first reason: a media `MediaController` is used for both client-server architectures (for audio apps) and single-activity architectures (for video apps). Had the `MediaController` been the only necessary component for client-server architectures, the video apps would've been doomed.
+1. Because we forcefully need a service (`MediaBrowserService`) to implement the client-server
+   approach for audio apps, we also need the `MediaBrowser`. By itself, the `MediaController` is not
+   enough: we need the `MediaBrowser` because it is the only entity capable of communicating with
+   a `MediaBrowser`
+   service, hence we can't ditch it.
+2. Follow-up on the first reason: a media `MediaController` is used for both client-server
+   architectures (for audio apps) and single-activity architectures (for video apps). Had
+   the `MediaController` been the only necessary component for client-server architectures, the
+   video apps would've been doomed.
 
 A `MediaBrowserService` provides two features:
-- It makes it easy for companion devices to discover your app,  create their own `MediaController`, connect to your `MediaSession`, and control playback, without accessing your app's UI activity at all.
-- It also provides an optional browsing API that lets clients query the service and build out a representation of its content hierarchy, which might represent playlists, a media library, etc..
+
+- It makes it easy for companion devices to discover your app, create their own `MediaController`,
+  connect to your `MediaSession`, and control playback, without accessing your app's UI activity at
+  all.
+- It also provides an optional browsing API that lets clients query the service and build out a
+  representation of its content hierarchy, which might represent playlists, a media library, etc..
 
 ### Note: Use Compat classes (NOTE: Where should I place this paragraph?)
 
@@ -79,30 +91,102 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
 
 ### How to setup a `MediaBrowserService` with a `MediaSession`?
 
-1. Declare the `MediaBrowserService` with an intent-filter in its manifest:
+1. Declare the `MediaBrowserService` with an intent-filter in the manifest:
 
-```xml
-<service android:name=".MediaPlaybackService">
-  <intent-filter>
-    <action android:name="android.media.browse.MediaBrowserService" />
-  </intent-filter>
-</service>
-```
+   ```xml
+   <service
+     android:name=".SimpleMusicService"
+     android:exported="false"> <!-- For simplicity, our service won't be called outside this app -->
+     <intent-filter>
+       <action android:name="android.media.browse.MediaBrowserService" />
+     </intent-filter>
+   </service>
+   ```
 
-The `MediaSession` will be instantiated and initialized in the `onCreate` method.
+2. Do the following in the service's `onCreate()` method:
 
-Steps:
+    1. Instantiate a `MediaSession`.
+    2. Create and initialize instances of `PlaybackState` and `MediaMetadata` and assign them to the
+       `MediaSession` (caching the builders for reuse)
+        - In order for external media buttons to work, the `PlaybackState` must contain an action
+          matching the intent that the media button sends. This applies to all states.
+    3. Create an instance of `MediaSession.Callback` and assign it to the `MediaSession`.
+    4. Set the media session token.
 
-- Set flags so that the `MediaSession` can receive callbacks from `MediaController`s and media
-  buttons.
-- Create and initialize instances of `PlaybackState` and `MediaMetadata` and assign them to the session (cache
-  the builders for reuse)
-  - In order for media buttons to work when your app is newly initialized (or stopped),
-  its `PlaybackState` must contain an action matching the intent that the media button sends.
-  This is why `ACTION_PLAY` is assigned to the session's `PlaybackState`
-  during initialization: so that the "Play" command triggers correctly when the player has just been
-  created.
-- Create an instance of `MediaSession.Callback` and assign it to the session.
+    ```java
+    public class SimpleMusicService extends MediaBrowserServiceCompat {
+      // private static final String MY_MEDIA_ROOT_ID = "media_root_id";
+      // private static final String MY_EMPTY_MEDIA_ROOT_ID = "empty_root_id";
+
+      private MediaSessionCompat mediaSession;
+      private PlaybackStateCompat.Builder playbackStateBuilder;
+
+      @Override
+      public void onCreate() {
+        super.onCreate();
+
+        // Create a MediaSessionCompat
+        mediaSession = new MediaSessionCompat(this, SimpleMusicService.class.getSimpleName());
+
+        // Set an initial PlaybackState with ACTION_PLAY, so media buttons can start the player
+        playbackStateBuilder = new PlaybackStateCompat.Builder()
+            .setActions(
+                PlaybackStateCompat.ACTION_PLAY |
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE);
+        mediaSession.setPlaybackState(playbackStateBuilder.build());
+
+        // MySessionCallback() has methods that handle callbacks from a media controller
+        mediaSession.setCallback(new MySessionCallback());
+
+        // Set the session's token so that client activities can communicate with it.
+        setSessionToken(mediaSession.getSessionToken());
+      }
+    }
+    ```
+
+### How to handle client connections the `MediaBrowserService`'s content hierarchy?
+
+Access permissions to the `MediaBrowserService` are controlled through `onGetRoot()` method. This
+method receives the client package name, the client UID, and a `Bundle` of hints as parameters. You
+use these parameters to define logic that determines whether to grant permissions and, how much of
+the content hierarchy the client should be allowed to browse.
+
+Depending on the outcome you want, you can return one of three things from this method:
+
+- Case 1: `null`, which means the connection is refused and permission was not given.
+- Case 2: An empty `BrowserRoot` object: the client was granted permissions to connect, but it
+  cannot browse the content hierarchy.
+- Case 3: A non-empty `BrowserRoot` object, which defines of the content hierarchy from which the
+  client is allowed to browse.
+
+`BrowserRoot` objects contain an ID string. It's up to the implementer to define how these IDs
+should look like. However, there are 2 special considerations:
+
+- The content hierarchy is an N-ary tree, and each node has a unique ID. Given the ID of a node, it
+  should be possible to retrieve the node's children. A `BrowserRoot` represents a node in the tree,
+  and the `BrowserRoot`'s ID is the same as the represented node's ID.
+- For Case 2: there should be a special, sentinel ID that represents an empty content hierarchy. A
+  `BrowserRoot` node will be built using this ID and returned.
+
+The `onGetRoot()` method should return quickly. User authentication and other slow processes should
+not run in `onGetRoot()`, but on `onLoadChildren()`.
+
+`onLoadChildren()` provides the ability for a client to build and display a menu of
+the `MediaBrowserService's` content hierarchy. If the client was given browsing-access to the
+service, it can traverse the content hierarchy by making repeated calls
+to `MediaBrowserCompat.subscribe()` to build a local representation of the UI. The `subscribe()`
+method calls the service's callback `onLoadChildren()`, which returns a list of `MediaItem` objects.
+A `MediaItem`, just as a `BrowserRoot`, represents a node in the content hierarchy tree, and its ID
+is the same as the represented node's ID. If you want to get the children of that node,
+call `MediaBrowserCompat.subscribe()` again, but now with that node's ID.
+
+Some considerations:
+
+- If browsing was not allowed, then `onLoadChildren` should send a `null` result.
+- `MediaItem`s should not contain icon bitmaps. Use a Uri instead by calling setIconUri() when you
+  build the MediaDescription for each item.
+- Heavy processing and time-consuming business logic can run in `onLoadChildren`. This method
+  returns it results not by an actual method return, but by calling `result.sendResult()`.
 
 ## Playback Resumption
 

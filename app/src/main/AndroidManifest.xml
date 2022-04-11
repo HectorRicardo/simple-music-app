@@ -18,6 +18,14 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
+
+    <service
+      android:name=".SimpleMusicService"
+      android:exported="false"> <!-- For simplicity, our service won't be called outside this app -->
+      <intent-filter>
+        <action android:name="android.media.browse.MediaBrowserService" />
+      </intent-filter>
+    </service>
   </application>
 
 </manifest>
