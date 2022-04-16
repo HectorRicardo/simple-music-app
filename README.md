@@ -5,16 +5,19 @@ code.
 
 The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. However, all the flow and the logic of the app is implemented.
 
+The player/thread logic is implemented in native C++ code. This is because the player logic is totally independent of Android: we could implement a similar app in iOS using this exact same logic, the only difference being that we would use iOS media libraries.
+
 The following section are notes that I took while reading https://developer.android.com/guide/topics/media.
 
-## General concepts: Media app overview architecture
+## General concepts: Media app overview
 
-This first section talks about basic concepts that apply both to video apps and music apps.
+This first section talks about basic concepts that apply to media apps. Media apps = both music apps and video apps.
 
 A decent media app is separated into two parts:
 
 - A Player that renders the media (audio/video).
 - A UI that issues commands to the player (play, pause, etc..) and displays the player's state.
+  - Commands are represented as "Transport Controls" in the following diagram. 
 
 ![A simple media app](docs_images/controller-session.png)
 
@@ -30,7 +33,11 @@ Android uses two classes to represent and decouple these two parts: an instance 
     - Responsible for all communication with the player.
     - The player is only called from the `MediaSession`.
     - Receives commands from the `MediaController`, and forwards these commands to the player.
-    - When the player updates its state, calls the `MediaController` to notify about this update.
+    - When the player updates its state, calls back the `MediaController` to notify about this update.
+
+These two entities communicate via a callback mechanism:
+- The `MediaSession` registers callbacks to be executed when receiving commands from the `MediaController` (depicted as "session callbacks" in the diagram below).
+- Similarly, the `MediaController` registers callbacks to be executed when receiving updates from the `MediaSession` (depicted as "controller callbacks").
 
 ![controller-session-detailed.png](docs_images/controller-session-detailed.png)
 
@@ -40,6 +47,8 @@ controlled from your app's UI as well as from other places, such as:
    - Google Assistant.
    - external hardware media buttons
    - etc..
+
+Each of these "places" creates its own `MediaController` and connects to your app's `MediaSession` the same way.
 
 From the next section onwards, we will talk specifically about music apps
 (no more talking about video apps, unless explicitly mentioned).
@@ -67,17 +76,15 @@ Doesn't the `MediaController`-`MediaSession` pair suffice?**
 
 - The `MediaController`-`MediaSession` pair applies both to audio and video apps,
 while the `MediaBrowser`-`MediaBrowserService` pair applies specifically to audio apps only.
+  - The `MediaBrowser`-`MediaBrowserService` pair is used to implement to the client-server architecture we've just described, and video apps don't follow this architecture (only audio apps do).
+  - The `MediaController`-`MediaSession` pair is not tied to any architecture so it can accomodate both to music and video apps.
 - We forcefully need an Android service so the music can play in the background. A `MediaSession` is not a service, hence we need `MediaBrowserService`.
-- Because we forcefully need `MediaBrowserService`, we also need its counterpart, the `MediaBrowser`. By itself, the `MediaController` is not enough: we need the `MediaBrowser` because it is the only entity capable of communicating with a `MediaBrowserServce`.
+  - And because we forcefully need `MediaBrowserService`, we also need its counterpart, the `MediaBrowser`. By itself, the `MediaController` is not enough: we need the `MediaBrowser` because it is the only entity capable of communicating with a `MediaBrowserServce`.
 
-Having a well-defined `MediaSession` allows media sessions (both audio and video sessions) to be controlled not only from your app's UI, but also from other places. In addition to this, having a well-defined `MediaBrowserService` 
-
-A `MediaBrowserService` provides two features:
-
-- It makes it easy for companion devices, like Android Auto and Wear OS, to discover your app, create their own `MediaController`,
-  connect to your `MediaSession`, and control playback, without accessing your app's UI activity at
-  all.
-- It also provides an optional browsing API that lets clients query the service and build out a
+As mentioned in the previous section, having a well-defined `MediaController-MediaSession` architecture allows your app's media session (both audio and video sessions) to be controlled not only from your app's UI, but also from other places. Now, for music apps, in addition to this advantage, having a well-defined `MediaBrowserService` has two additional advantages:
+- It makes your app discoverable to companion devices like Android Auto and Wear OS.
+  - After discovering your app, the companion device can then take advantage of the `MediaController-MediaSession` architecture, that is, it can proceed to create its own `MediaController`, connect to your `MediaSession`, and control playback, without accessing your app's UI activity at all.
+- It also provides an optional browsing API that lets clients query the `MediaBrowserService` and build out a
   representation of its content hierarchy, which might represent playlists, a media library, etc..
 
 ### Note: Use Compat classes (NOTE: Where should I place this paragraph?)
@@ -88,45 +95,44 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
 
 ### How to setup a `MediaBrowserService` with a `MediaSession`?
 
-1. Declare the `MediaBrowserService` with an intent-filter in the manifest:
+1. Create a `MediaBrowserService` file.
+2. Declare the `MediaBrowserService` with an intent-filter in the manifest:
 
    ```xml
    <service
      android:name=".SimpleMusicService"
      android:exported="false"> <!-- For simplicity, our service won't be called outside this app -->
      <intent-filter>
+       <!-- Note that the name doesn't require the "Compat" suffix -->
        <action android:name="android.media.browse.MediaBrowserService" />
      </intent-filter>
    </service>
    ```
 
-2. Do the following in the service's `onCreate()` method:
+3. Do the following in the service's `onCreate()` method:
 
     1. Instantiate a `MediaSession`.
     2. Set the initial player state in the `MediaSession`:
         - The state of a player is represented by two classes:
-            - `PlaybackState`: describes the player's current operational state
+            - `PlaybackState`: describes the player's current operational state. Has fields describing:
                 - State: Playing/Paused/Buffering/Stopped
                 - Player position (for the seekbar)
                 - Valid controller actions (both built-in and custom) that can be handled in the current state.
                     - These actions define what commands and external hardware media buttons the Player will be able to
                       respond to in the current state.
-                    - Special case: The `ACTION_PLAY_PAUSE` can only be triggered by an external button. If the player is playing,
+                    - Special case: The `ACTION_PLAY_PAUSE` can only be triggered by an external button. If the player is in the PLAYING state,
                       it will correspond to a pause command, else it will correspond to a play command.
             - `MediaMetadata`: describes the material currently playing.
                 - Name of current artist, album, track
                 - Duration of track
                 - Album artwork
-        - Create and initialize instances of `PlaybackState` and `MediaMetadata` and assign them to the
+        - **What you must do**: Create and initialize instances of `PlaybackState` and `MediaMetadata` and assign them to the
           `MediaSession` (caching the builders for reuse).
     3. Create an instance of `MediaSession.Callback` and assign it to the `MediaSession`.
     4. Set the media session token.
 
     ```java
     public class SimpleMusicService extends MediaBrowserServiceCompat {
-      // private static final String MY_MEDIA_ROOT_ID = "media_root_id";
-      // private static final String MY_EMPTY_MEDIA_ROOT_ID = "empty_root_id";
-
       private MediaSessionCompat mediaSession;
       private PlaybackStateCompat.Builder playbackStateBuilder;
 
@@ -137,7 +143,8 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
         // Create a MediaSessionCompat
         mediaSession = new MediaSessionCompat(this, SimpleMusicService.class.getSimpleName());
 
-        // Set an initial PlaybackState with ACTION_PLAY, so media buttons can start the player
+        // Set an initial PlaybackState with ACTION_PLAY and ACTION_PLAY_PAUSE
+        // so media buttons can start the player
         playbackStateBuilder = new PlaybackStateCompat.Builder()
             .setActions(
                 PlaybackStateCompat.ACTION_PLAY |
