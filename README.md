@@ -19,7 +19,10 @@ A decent media app is separated into two parts:
 - A UI that issues commands to the player (play, pause, etc..) and displays the player's state.
   - Commands are represented as "Transport Controls" in the following diagram. 
 
-![A simple media app](docs_images/controller-session.png)
+<figure>
+  <img alt="A basic media app diagram" src="docs_images/controller-session.png">
+  <figcaption>Figure 1. Basic media app diagram</figcaption>
+</figure>
 
 Android uses two classes to represent and decouple these two parts: an instance of `MediaController`, which controls the UI, and an instance of `MediaSession`, which manages the player:
 
@@ -39,7 +42,10 @@ These two entities communicate via a callback mechanism:
 - The `MediaSession` registers callbacks to be executed when receiving commands from the `MediaController` (depicted as "session callbacks" in the diagram below).
 - Similarly, the `MediaController` registers callbacks to be executed when receiving updates from the `MediaSession` (depicted as "controller callbacks").
 
-![controller-session-detailed.png](docs_images/controller-session-detailed.png)
+<figure>
+  <img src="docs_images/controller-session-detailed.png" alt="Detailed view of media app architecture">
+  <figcaption>Figure 2. Detailed view of media app architecture</figcaption>
+</figure>
 
 A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
 with one or more `MediaController`s simultaneously. This makes it possible for your player to be
@@ -71,7 +77,10 @@ This design is implemented with a client-server architecture
     - Will hold a `MediaBrowser` that will connect to the `MediaBrowserService`.
     - Will also hold the `MediaController`.
 
-![client-service-architecture.png](docs_images/client-service-architecture.png)
+<figure>
+  <img src="docs_images/client-service-architecture.png" alt="Client-server architecture for music apps">
+  <figcaption>Figure 3. Client-server architecture for music apps</figcaption>
+</figure>
 
 **Question: why do we need to introduce yet another layer, the `MediaBrowser`-`MediaBrowserService` pair?
 Doesn't the `MediaController`-`MediaSession` pair suffice?**
@@ -167,13 +176,39 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
     
 ## The Content hierarchy
 
-Before proceeding, let's explain more about the content hierarchy. The content hierarchy is simply
-the media library represented as a graph of nodes that you define as you wish. Ideally, this graph
-should be a [Directed Acyclic Graph (DAG)](https://en.wikipedia.org/wiki/Directed_acyclic_graph).
+Before proceeding, let's explain more about the content hierarchy. The content hierarchy is the media
+library offered by your app's `MediaBrowserService`. It's a graph of nodes representing media items
+(e.g. songs) that you organize as you wish. Each node has a unique ID. This is an example of a very
+simple content hierarchy:
 
-I will explain the DAG in layman terms. Imagine the following content hierarchy:
+<figure>
+  <img src="docs_images/content_hierarchy_sample.svg" alt="Sample content hierarchy">
+  <figcaption>Figure 4. Sample content hierarchy</figcaption>
+</figure>
 
-![Example](docs_images/content_hierarchy_example.svg)
+Every node in this graph has between 0-N children. Given a node, you can retrieve its children by
+looking at the graph. This is the most fundamental characteristic of the content hierarchy. It's also
+the only enforced requirement of the graph.
+
+The example in the image is a very good example for a content hierarchy.  Technically speaking, the
+example graph is a [Directed Acyclic Graph (DAG)](https://en.wikipedia.org/wiki/Directed_acyclic_graph), because:
+- Its edges have direction, hence "Directed"
+  - For example, from *Romantic*, it's indicated that you can "jump" to *Shallow*.
+- It doesn't have any cycles, hence "Acyclic".
+  - Once you jump to *Shallow*, there's no way you can get back to *Romantic*.
+  - This is important since it prevents infinite loops in your app and in other apps/mechanisms connecting to your app.
+
+You can see that some items, such as *Viva la Vida* have two parents. This is completely valid, and it's a common characteristic of a DAG.
+
+A content hierarchy being a DAG is a best practice for music apps.
+
+**Question: Can my content content hierarchy be like these?**
+
+
+
+
+
+
 
 
 ## How to handle client connections to the `MediaBrowserService`'s content hierarchy?
@@ -183,8 +218,6 @@ controlled through the `onGetRoot()` method. This method receives the client pac
 client UID, and a `Bundle` of hints as parameters. You use these parameters to define logic that
 determines whether to grant permissions to the client to connect to the service, and if so, how
 much of the content hierarchy the client should be allowed to browse.
-
-I will explain this in layman terms, assuming that you already know what a graph is. 
 
 Depending on the outcome you want, you can return one of three things from this method:
 
