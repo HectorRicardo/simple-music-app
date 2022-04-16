@@ -44,11 +44,13 @@ These two entities communicate via a callback mechanism:
 A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
 with one or more `MediaController`s simultaneously. This makes it possible for your player to be
 controlled from your app's UI as well as from other places, such as:
-   - Google Assistant.
    - external hardware media buttons
+   - Google Assistant
    - etc..
 
 Each of these "places" creates its own `MediaController` and connects to your app's `MediaSession` the same way.
+In particular, the integration with external media hardware buttons comes out-of-the-box: as long as your app
+has a `MediaSession`, these buttons will work as expected.
 
 From the next section onwards, we will talk specifically about music apps
 (no more talking about video apps, unless explicitly mentioned).
@@ -85,15 +87,16 @@ As mentioned in the previous section, having a well-defined `MediaController-Med
 - It makes your app discoverable to companion devices like Android Auto and Wear OS.
   - After discovering your app, the companion device can then take advantage of the `MediaController-MediaSession` architecture, that is, it can proceed to create its own `MediaController`, connect to your `MediaSession`, and control playback, without accessing your app's UI activity at all.
 - It also provides an optional browsing API that lets clients query the `MediaBrowserService` and build out a
-  representation of its content hierarchy, which might represent playlists, a media library, etc..
+  representation of its **content hierarchy**.
+  - The content hierarchy is the full media library available. It might consists of songs or media items organized hierarchically into artists, albums, playlists, etc.. We'll talk more about the content hierarchy in a bit.
 
-### Note: Use Compat classes (NOTE: Where should I place this paragraph?)
+## Note: Use Compat classes (NOTE: Where should I place this paragraph?)
 
 The recommended implementation of media sessions and media controllers are the classes
 `MediaSessionCompat` and `MediaControllerCompat`. When you use these compat classes, you can remove
 all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControlClient`.
 
-### How to setup a `MediaBrowserService` with a `MediaSession`?
+## How to setup a `MediaBrowserService` with a `MediaSession`?
 
 1. Create a `MediaBrowserService` file.
 2. Declare the `MediaBrowserService` with an intent-filter in the manifest:
@@ -161,21 +164,34 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
       }
     }
     ```
+    
+## The Content hierarchy
 
-### How to handle client connections the `MediaBrowserService`'s content hierarchy?
+Before proceeding, let's explain more about the content hierarchy. The content hierarchy is simply
+the media library represented as a graph of nodes that you define as you wish. Ideally, this graph
+should be a [Directed Acyclic Graph (DAG)](https://en.wikipedia.org/wiki/Directed_acyclic_graph).
 
-Access permissions to the `MediaBrowserService` are controlled through `onGetRoot()` method. This
-method receives the client package name, the client UID, and a `Bundle` of hints as parameters. You
-use these parameters to define logic that determines whether to grant permissions and, how much of
-the content hierarchy the client should be allowed to browse.
+I will explain the DAG in layman terms. Imagine the following content hierarchy.
+
+
+
+## How to handle client connections to the `MediaBrowserService`'s content hierarchy?
+
+Connection and access permissions to the `MediaBrowserService` and to its content hierarchy are
+controlled through the `onGetRoot()` method. This method receives the client package name, the
+client UID, and a `Bundle` of hints as parameters. You use these parameters to define logic that
+determines whether to grant permissions to the client to connect to the service, and if so, how
+much of the content hierarchy the client should be allowed to browse.
+
+I will explain this in layman terms, assuming that you already know what a graph is. 
 
 Depending on the outcome you want, you can return one of three things from this method:
 
 - Case 1: `null`, which means the connection is refused and permission was not given.
-- Case 2: An empty `BrowserRoot` object: the client was granted permissions to connect, but it
-  cannot browse the content hierarchy.
-- Case 3: A non-empty `BrowserRoot` object, which defines of the content hierarchy from which the
-  client is allowed to browse.
+- Case 2: An "empty" `BrowserRoot` object: this object represents an empty content hierarchy (size 0).
+  The client was granted permissions to connect, but it cannot browse the content hierarchy.
+- Case 3: A non-empty `BrowserRoot` object, which defines the subset of the content hierarchy
+  from which the client is allowed to browse.
 
 `BrowserRoot` objects contain an ID string. It's up to the implementer to define how these IDs
 should look like. However, there are 2 special considerations:
