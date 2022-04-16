@@ -255,10 +255,10 @@ not run in `onGetRoot()`, but on `onLoadChildren()`, which we explain next.
 
 If the value returned from `onGetRoot` is non-null, a client should now attempt to traverse the service's content hierarchy to build a UI representation of it. (A client should try to do this even if the `BrowserRoot` returned was the empty `BrowserRoot`, because the client doesn't have a way to know that). The client will call the `MediaBrowser`'s `subscribe()` method with the ID of the `BrowserRoot` returned from `onGetRoot`. The `subscribe` method will end up calling the service's `onLoadChildren` method, which will return the children of the node passed in to `subscribe`.
 
-Here's the flow explained in detail. The algorithm is iterative
+Here's the flow explained in detail. The algorithm is iterative:
 
 1. The client calls the `MediaBrowserCompat.subscribe()` method, passing in the following as parameters:
-    - The ID of the node for which you want its children.
+    - The ID of the node whose children you want to obtain.
         - In the first iteration of the algorithm, this will be the ID of the `BrowserRoot` node returned from `onGetRoot`.
     - A callback that will be executed whenever the service returns the children of the requested node.
         - This callback has a `List<MediaItem>` as a parameter, which is precisely the result sent by back the service.
