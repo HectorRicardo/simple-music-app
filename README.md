@@ -193,7 +193,7 @@ This is an example of a very simple content hierarchy:
   <figcaption>Figure 4. Sample content hierarchy</figcaption>
 </figure>
 
-This content graph might translate to something like this in an app:
+This content graph might translate to something like this in an app: TODO
 
 Depending on the permissions you give, clients connecting to your `MediaBrowserService` can access and browse this
 content hierarchy. You can also restrict clients to allow them to browse only a limited subset of
@@ -225,35 +225,37 @@ Answer: No! You can have a graph like this:
 
 ![Allowed graph](docs_images/content_hierarchy_variation1.svg)
 
+Here we consider *Bad Guy (Billie Eilish)* to be so different that it should lie side-by-side with the other genres.
+
 Heck, a node can even be both a submenu and a playable item.
 
-![Allowed graph](docs_images/content_hierarchy_variation2.svg)
+![Allowed graph](docs_images/content_hierarchy_variation2.svg).
 
-These use cases are uncommon, but valid. However, although not strictly follow by Android,
-you should follow these 2 best practices (besides making your content hierarchy a DAG):
+Here, imagine that by playing "Pop", you hear a narrator saying something like "Welcome to the pop music section".
+
+However, when going through these uncommon use cases, you should follow these 2 best practices
+(besides making your content hierarchy a DAG):
 - The graph root node (starting point) should not be playable.
 - The other starting point nodes from which clients are allowed to browse should not be playable either.
 
-## How to handle client connections to the `MediaBrowserService`'s content hierarchy?
+These two are not requirements strictly enforced by Android, but it's good to follow them.
 
-Connection and access permissions to the `MediaBrowserService` and to its content hierarchy are
-controlled through the service's `onGetRoot()` method. This method receives the client package name, the
-client UID, and a `Bundle` of hints as parameters. You use these parameters to define logic that
-determines whether to grant permissions to the client to connect to the service, and if so, how
-much of the content hierarchy the client should be allowed to browse.
+## How to handle client connections to the `MediaBrowserService`?
 
-The return type of this method is a `BrowserRoot`, which is a reference to a node in the content
-hierarchy's graph. A `BrowserRoot` is an object that has an ID field. This ID is the same as
-the node's ID it's pointing to.
+Permissions to connect to the `MediaBrowserService` and to browse its content hierarchy are
+controlled by the service's `onGetRoot()` method. As parameters, this
+method receives the identifiers of the client wanting to connect and a `Bundle` of hints. You use these parameters
+to define logic that determines whether to grant permissions to the client to reach the service, 
+and if so, the subset of the content hierarchy the client should be allowed to browse.
 
-Depending on the outcome you want, you can return one of three things from this method:
-
-- Case 1: `null`, which means the connection is refused and permission was not given.
-- Case 2: An "empty" `BrowserRoot` object: this object represents an empty content hierarchy (size 0).
-  The client was granted permissions to connect, but it cannot browse the content hierarchy at all.
-  The ID of the returned `BrowserRoot` does not correspond to any ID in the content hierarchy.
-- Case 3: A non-empty `BrowserRoot` object, which points to the node in the content hierarchy from
-  which the client is allowed to browse.
+The return type of this method is a `BrowserRoot`, which is an object that has an ID field.
+For most cases, you return a `BrowserRoot` whose ID corresponds to the ID of the content hierarchy's node from
+which you want to allow the client to browse. (And, as per the best practices stated above, this
+node shouldn't be playable). However, there are two special cases:
+- If you return `null`, it means the connection is refused and permission was not given.
+- If you return a `BrowserRoot` whose ID does not match the ID of any node, it means that
+  the client was granted permissions to connect, but it cannot browse the content hierarchy at all.
+    - We call such `BrowserRoot` an empty `BrowserRoot` and its ID, an "empty media root id".
 
 The `onGetRoot()` method should return quickly. User authentication and other slow processes should
 not run in `onGetRoot()`, but on `onLoadChildren()`, which we explain next.
@@ -268,15 +270,15 @@ Here's the flow explained in detail. The algorithm is iterative:
     - The ID of the node whose children you want to obtain.
         - In the first iteration of the algorithm, this will be the ID of the `BrowserRoot` node returned from `onGetRoot`.
     - A callback that will be executed whenever the service returns the children of the requested node.
-        - This callback has a `List<MediaItem>` as a parameter, which is precisely the result sent by back the service.
+        - This callback has a `List<MediaItem>` as a parameter, which is precisely the result sent back by the service.
 2. The `subscribe()` method internally ends up calling `onLoadChildren`, forwarding the node ID that it was passed in by the client.
 3. `onLoadChildren` looks at the ID of the node passed in. It retrieves the immediate children of the node, and returns them as result.
-    - If the ID of the passed-in node is actually the ID of the dummy, empty `BrowserRoot` node, then an empty list is returned.
+    - If the ID of the passed-in node is actually the ID of the empty `BrowserRoot` node, then an empty list is returned.
     - Heavy processing, user authentication, and time-consuming business logic can run here. This method is async, meaning that it doesn't return
     with an actual `return`, but by calling `result.sendResult()` (`result` is the second parameter of `onLoadChildren`).
-    - `MediaItem`s returned by this method should not contain icon bitmaps. Use a Uri instead by calling `setIconUri()` when you
-     build the MediaDescription for each item.
-4. The callback that was passed in in step 1 is executed on the client's side. This callback has as its parameter the list of children returned by the service.
+    - The children (instances of `MediaItem`) returned by this method should not contain icon bitmaps. Use a Uri instead by calling `setIconUri()` when you
+     build the `MediaDescription` for each item.
+4. The callback that was passed in in step 1 is executed on the client's side. This callback has as its parameter the list of children retrieved in the previous step.
     - The client uses this list to partially build (keep building) a menu of the content hierarchy.
 5. The client looks at each `MediaItem` in the results.
     - If `MediaItem.isBrowsable()` is true, then the client jumps back to step 1, but now passing the ID of the current `MediaItem`.
