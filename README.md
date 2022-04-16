@@ -177,86 +177,102 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
 ## The Content hierarchy
 
 Before proceeding, let's explain more about the content hierarchy. The content hierarchy is the media
-library offered by your app's `MediaBrowserService`. It's a graph of nodes representing media items
-(e.g. songs) that you organize as you wish. Each node has a unique ID. This is an example of a very
-simple content hierarchy:
+library offered by your app's `MediaBrowserService`. It's a graph of nodes representing submenus
+(eg. directories) and media items (e.g. songs) that you organize as you wish. Each node has a unique ID.
+This is an example of a very simple content hierarchy:
 
 <figure>
   <img src="docs_images/content_hierarchy_sample.svg" alt="Sample content hierarchy">
   <figcaption>Figure 4. Sample content hierarchy</figcaption>
 </figure>
 
-Every node in this graph has between 0-N children. Given a node, you can retrieve its children by
+This content graph might translate to something like this in an app:
+
+Depending on the permissions you give, clients connecting to your `MediaBrowserService` can access and browse this
+content hierarchy. You can also restrict clients to allow them to browse only a limited subset of
+the content hierarchy (starting from a given node). And you can define these permissions on a client-per-client basis.
+We'll talk about permissions in the next section.
+
+Every node in the depicted graph above has between 0-N children. Given a node, you can retrieve its children by
 looking at the graph. This is the most fundamental characteristic of the content hierarchy. It's also
 the only enforced requirement of the graph.
 
-The example in the image is a very good example for a content hierarchy.  Technically speaking, the
+The example in the image is actually a very good example for a content hierarchy. Technically speaking, the
 example graph is a [Directed Acyclic Graph (DAG)](https://en.wikipedia.org/wiki/Directed_acyclic_graph), because:
 - Its edges have direction, hence "Directed"
   - For example, from *Romantic*, it's indicated that you can "jump" to *Shallow*.
 - It doesn't have any cycles, hence "Acyclic".
   - Once you jump to *Shallow*, there's no way you can get back to *Romantic*.
-  - This is important since it prevents infinite loops in your app and in other apps/mechanisms connecting to your app.
+  - This is important since it prevents infinite loops in the browsing algorithm in your app and
+    in other apps/mechanisms connecting to your app.
 
-You can see that some items, such as *Viva la Vida* have two parents. This is completely valid, and it's a common characteristic of a DAG.
+You can see that some items, such as *Viva la Vida*, have two parents. This is completely valid,
+and it's a common characteristic of a DAG. (And think about it: some songs can be considered belonging to two genres.
+In this example, we consider Coldplay's *Viva la Vida* to be both a pop song and an alternative song).
 
-A content hierarchy being a DAG is a best practice for music apps.
+Although not strictly required by Android, content hierarchies that are DAGs are a best practice for music apps.
 
-**Question: Are the playable items only allowed to be at the last level of the graph**
+**Question: Are the playable items only allowed to be at the last level of the graph?**
 
-Answer: No! You can have a graph like this
+Answer: No! You can have a graph like this:
 
+![Allowed graph](docs_images/content_hierarchy_variation1.svg)
 
+Heck, a node can even be both a submenu and a playable item.
 
+![Allowed graph](docs_images/content_hierarchy_variation2.svg)
 
-
-
-
+These use cases are uncommon, but valid. However, although not strictly follow by Android,
+you should follow these 2 best practices (besides making your content hierarchy a DAG):
+- The graph root node (starting point) should not be playable.
+- The other starting point nodes from which clients are allowed to browse should not be playable either.
 
 ## How to handle client connections to the `MediaBrowserService`'s content hierarchy?
 
 Connection and access permissions to the `MediaBrowserService` and to its content hierarchy are
-controlled through the `onGetRoot()` method. This method receives the client package name, the
+controlled through the service's `onGetRoot()` method. This method receives the client package name, the
 client UID, and a `Bundle` of hints as parameters. You use these parameters to define logic that
 determines whether to grant permissions to the client to connect to the service, and if so, how
 much of the content hierarchy the client should be allowed to browse.
+
+The return type of this method is a `BrowserRoot`, which is a reference to a node in the content
+hierarchy's graph. A `BrowserRoot` is an object that has an ID field. This ID is the same as
+the node's ID it's pointing to.
 
 Depending on the outcome you want, you can return one of three things from this method:
 
 - Case 1: `null`, which means the connection is refused and permission was not given.
 - Case 2: An "empty" `BrowserRoot` object: this object represents an empty content hierarchy (size 0).
-  The client was granted permissions to connect, but it cannot browse the content hierarchy.
-- Case 3: A non-empty `BrowserRoot` object, which defines the subset of the content hierarchy
-  from which the client is allowed to browse.
-
-`BrowserRoot` objects contain an ID string. It's up to the implementer to define how these IDs
-should look like. However, there are 2 special considerations:
-
-- The content hierarchy is an N-ary tree, and each node has a unique ID. Given the ID of a node, it
-  should be possible to retrieve the node's children. A `BrowserRoot` represents a node in the tree,
-  and the `BrowserRoot`'s ID is the same as the represented node's ID.
-- For Case 2: there should be a special, sentinel ID that represents an empty content hierarchy. A
-  `BrowserRoot` node will be built using this ID and returned.
+  The client was granted permissions to connect, but it cannot browse the content hierarchy at all.
+  The ID of the returned `BrowserRoot` does not correspond to any ID in the content hierarchy.
+- Case 3: A non-empty `BrowserRoot` object, which points to the node in the content hierarchy from
+  which the client is allowed to browse.
 
 The `onGetRoot()` method should return quickly. User authentication and other slow processes should
-not run in `onGetRoot()`, but on `onLoadChildren()`.
+not run in `onGetRoot()`, but on `onLoadChildren()`, which we explain next.
 
-`onLoadChildren()` provides the ability for a client to build and display a menu of
-the `MediaBrowserService's` content hierarchy. If the client was given browsing-access to the
-service, it can traverse the content hierarchy by making repeated calls
-to `MediaBrowserCompat.subscribe()` to build a local representation of the UI. The `subscribe()`
-method calls the service's callback `onLoadChildren()`, which returns a list of `MediaItem` objects.
-A `MediaItem`, just as a `BrowserRoot`, represents a node in the content hierarchy tree, and its ID
-is the same as the represented node's ID. If you want to get the children of that node,
-call `MediaBrowserCompat.subscribe()` again, but now with that node's ID.
+## How can a client build a representation of your app's content hierarchy?
 
-Some considerations:
+If the value returned from `onGetRoot` is non-null, a client should now attempt to traverse the service's content hierarchy to build a UI representation of it. (A client should try to do this even if the `BrowserRoot` returned was the empty `BrowserRoot`, because the client doesn't have a way to know that). The client will call the `MediaBrowser`'s `subscribe()` method with the ID of the `BrowserRoot` returned from `onGetRoot`. The `subscribe` method will end up calling the service's `onLoadChildren` method, which will return the children of the node passed in to `subscribe`.
 
-- If browsing was not allowed, then `onLoadChildren` should send a `null` result.
-- `MediaItem`s should not contain icon bitmaps. Use a Uri instead by calling setIconUri() when you
-  build the MediaDescription for each item.
-- Heavy processing and time-consuming business logic can run in `onLoadChildren`. This method
-  returns it results not by an actual method return, but by calling `result.sendResult()`.
+Here's the flow explained in detail. The algorithm is iterative
+
+1. The client calls the `MediaBrowserCompat.subscribe()` method, passing in the following as parameters:
+    - The ID of the node for which you want its children.
+        - In the first iteration of the algorithm, this will be the ID of the `BrowserRoot` node returned from `onGetRoot`.
+    - A callback that will be executed whenever the service returns the children of the requested node.
+        - This callback has a `List<MediaItem>` as a parameter, which is precisely the result sent by back the service.
+2. The `subscribe()` method internally ends up calling `onLoadChildren`, forwarding the node ID that it was passed in by the client.
+3. `onLoadChildren` looks at the ID of the node passed in. It retrieves the immediate children of the node, and returns them as result.
+    - If the ID of the passed-in node is actually the ID of the dummy, empty `BrowserRoot` node, then an empty list is returned.
+    - Heavy processing, user authentication, and time-consuming business logic can run here. This method is async, meaning that it doesn't return
+    with an actual `return`, but by calling `result.sendResult()` (`result` is the second parameter of `onLoadChildren`).
+    - `MediaItem`s returned by this method should not contain icon bitmaps. Use a Uri instead by calling `setIconUri()` when you
+     build the MediaDescription for each item.
+4. The callback that was passed in in step 1 is executed on the client's side. This callback has as its parameter the list of children returned by the service.
+    - The client uses this list to partially build (keep building) a menu of the content hierarchy.
+5. The client looks at each `MediaItem` in the results.
+    - If `MediaItem.isBrowsable()` is true, then the client jumps back to step 1, but now passing the ID of the current `MediaItem`.
 
 ## Playback Resumption
 
