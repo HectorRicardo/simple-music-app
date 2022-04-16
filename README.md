@@ -134,6 +134,13 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
                       respond to in the current state.
                     - Special case: The `ACTION_PLAY_PAUSE` can only be triggered by an external button. If the player is in the PLAYING state,
                       it will correspond to a pause command, else it will correspond to a play command.
+                - Active error code, if any. Errors can be fatal or non-fatal:
+                    -  **Fatal**: Happens when playback is interrupted and cannot resume.
+                        -  Set the transport state to `STATE_ERROR` and specify the error with `setErrorMessage(int, CharSequence`).
+                        -  Will be cleared only when playback isn't blocked anymore
+                    - **Non-fatal**: Happens when the app cannot handle a request, but can continue to play.
+                        - Player remains in a "normal" state (such as `STATE_PLAYING`) but the `PlaybackState` holds an error.
+                        - Can be cleared in the next `PlaybackState` update (or overriden, if a new error comes in).
             - `MediaMetadata`: describes the material currently playing.
                 - Name of current artist, album, track
                 - Duration of track
@@ -147,7 +154,7 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
     public class SimpleMusicService extends MediaBrowserServiceCompat {
       private final PlaybackStateCompat.Builder playbackStateBuilder = new PlaybackStateCompat.Builder();
       private final MediaSessionCompat.Callback mediaSessionCallbacks = new MediaSessionCompat.Callback() {
-        // Implement methods that handle callbacks from a media controller...
+        // Implement callbacks that handle responses to commands issued from a media controller...
       };
       
       private MediaSessionCompat mediaSession;
@@ -160,7 +167,7 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
         mediaSession = new MediaSessionCompat(this, SimpleMusicService.class.getSimpleName());
 
         // Set an initial PlaybackState with ACTION_PLAY and ACTION_PLAY_PAUSE
-        // so media buttons can start the player
+        // so these commands/media buttons can start the player
         mediaSession.setPlaybackState(playbackStateBuilder.setActions(
                 PlaybackStateCompat.ACTION_PLAY |
                     PlaybackStateCompat.ACTION_PLAY_PAUSE).build());
