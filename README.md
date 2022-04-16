@@ -171,8 +171,9 @@ Before proceeding, let's explain more about the content hierarchy. The content h
 the media library represented as a graph of nodes that you define as you wish. Ideally, this graph
 should be a [Directed Acyclic Graph (DAG)](https://en.wikipedia.org/wiki/Directed_acyclic_graph).
 
-I will explain the DAG in layman terms. Imagine the following content hierarchy.
+I will explain the DAG in layman terms. Imagine the following content hierarchy:
 
+![Example](docs_images/content_hierarchy_example.svg)
 
 
 ## How to handle client connections to the `MediaBrowserService`'s content hierarchy?
