@@ -128,13 +128,17 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
                 - Album artwork
         - **What you must do**: Create and initialize instances of `PlaybackState` and `MediaMetadata` and assign them to the
           `MediaSession` (caching the builders for reuse).
-    3. Create an instance of `MediaSession.Callback` and assign it to the `MediaSession`.
+    3. Create an instance of `MediaSession.Callback` and assign it to the `MediaSession`. We'll see more about media session callbacks a bit later.
     4. Set the media session token.
 
     ```java
     public class SimpleMusicService extends MediaBrowserServiceCompat {
+      private final PlaybackStateCompat.Builder playbackStateBuilder = new PlaybackStateCompat.Builder();
+      private final MediaSessionCompat.Callback mediaSessionCallbacks = new MediaSessionCompat.Callback() {
+        // Implement methods that handle callbacks from a media controller...
+      };
+      
       private MediaSessionCompat mediaSession;
-      private PlaybackStateCompat.Builder playbackStateBuilder;
 
       @Override
       public void onCreate() {
@@ -145,14 +149,12 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
 
         // Set an initial PlaybackState with ACTION_PLAY and ACTION_PLAY_PAUSE
         // so media buttons can start the player
-        playbackStateBuilder = new PlaybackStateCompat.Builder()
-            .setActions(
+        mediaSession.setPlaybackState(playbackStateBuilder.setActions(
                 PlaybackStateCompat.ACTION_PLAY |
-                    PlaybackStateCompat.ACTION_PLAY_PAUSE);
-        mediaSession.setPlaybackState(playbackStateBuilder.build());
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE).build());
 
-        // MySessionCallback() has methods that handle callbacks from a media controller
-        mediaSession.setCallback(new MySessionCallback());
+        // Set the media session callbacks
+        mediaSession.setCallback(mediaSessionCallbacks);
 
         // Set the session's token so that client activities can communicate with it.
         setSessionToken(mediaSession.getSessionToken());
