@@ -202,7 +202,9 @@ You can see that some items, such as *Viva la Vida* have two parents. This is co
 
 A content hierarchy being a DAG is a best practice for music apps.
 
-**Question: Can my content content hierarchy be like these?**
+**Question: Are the playable items only allowed to be at the last level of the graph**
+
+Answer: No! You can have a graph like this
 
 
 
