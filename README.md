@@ -1,16 +1,16 @@
 # Simple Music App
 
-Android app that implements a complete, fully-fledged architecture for a small music player using the Android Media APIs.
+Educational Android app that implements a complete, fully-fledged architecture for a small music player using the Android Media APIs.
 
-The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the music app's architecture, which is explained in https://developer.android.com/guide/topics/media.
+The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the app's architecture, which is explained in https://developer.android.com/guide/topics/media.
 
 In fact, this app can be considered as an audio Hello World app. It's much simpler than the [Universal Audio Media Player app](https://github.com/android/uamp) because it doesn't use ExoPlayer and it strictly follows only what is described in the Android docs. No bells and whistles.
 
-The following section are notes that I took while reading https://developer.android.com/guide/topics/media.
+The following section are notes that I took while reading the Android docs.
 
 ## General concepts: Media app overview
 
-This first section talks about basic concepts that apply to all media apps. Media apps = both music apps and video apps.
+These first sections talk about basic concepts that apply to all media apps. Media apps = both music apps and video apps.
 
 A decent media app is separated into two components:
 
@@ -30,7 +30,7 @@ Instead, the Player can also be controlled from other places, such as:
 - Google Assistant
 - notification bar/lock screen
 
-Android provides two universal classes that decouple these two media app components. Since these
+Android provides two universal classes used to decouple these two media app components. Since these
 classes are universal, they allow a media app to integrate with any other Android app/component/mechanism
 smoothly and consistently.
 
@@ -49,7 +49,7 @@ The two classes are: 1) an instance of `MediaController`, which controls the UI,
     - The player is only called from the `MediaSession`.
     - Receives command callbacks from the `MediaController`, and forwards these commands to the player.
         - Command callbacks are also known as "Session callbacks".
-    - When the player updates its state, sends a controller callback to the `MediaController` to notify about this update.
+    - When the player updates its state, sends a controller callback to the `MediaController` notifying about this update.
  
 <figure>
   <img src="docs_images/media-app-with-android-classes.png" alt="Media app diagram with Android classe">
@@ -57,44 +57,44 @@ The two classes are: 1) an instance of `MediaController`, which controls the UI,
 </figure>
 
 A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
-with one or more `MediaController`s simultaneously. This allows for your player to be
+with one or more `MediaController`s simultaneously. This allows your player to be
 controlled from your app's UI as well as from other places (Google Assistant, notification bar, etc..).
 Each of these "places" creates its own `MediaController` and connects to your app's `MediaSession` the same way.
 
 ## Player State
 
-A Player entity has/maintains state, which is divided in two kinds:
+When the player state changes, the `MediaSession` notifies about this to all the `MediaController`s it is connected to. This means there must be some Android universal classes used to talk about player state.
 
-- **Playback state**: The player's current operational state. Is represented by an instance of `PlaybackState`, which consists of:
+And there are. Android provides two such classes:
+
+- An instance of `PlaybackState`: The player's current operational state. Has fields for:
     - State: Playing/Paused/Buffering/Stopped/Error/etc..
     - Position (current progress as displayed in a seekbar)
+    - Speed: How fast the media is being played (1x, 1.5x, 0.5x, etc..)
     - Valid controller actions (both built-in and custom) that can be handled in the current state.
         - These actions define what commands and external hardware media buttons the player will
           respond to in the current state.
     - Active error code and error message, if any. Errors can be fatal or non-fatal:
         -  **Fatal**: Happens when playback is interrupted and cannot resume.
             -  The state will be ERROR (instead of Playing, Paused, etc..)
-            -  This error is cleared only when playback isn't blocked anymore.
+            -  The error is cleared only when playback isn't blocked anymore
+               (A new `PlaybackState` instance is generated, with a non-error state).
         - **Non-fatal**: Happens when the player cannot handle a request, but can continue to play.
-            - Player remains in a "normal" state (such as Playing or Paused).
+            - Player remains in a non-error state (such as Playing or Paused).
             - This error is cleared in the next `PlaybackState` update (or overriden, if a new error comes in).
-- **Media metadata**: information about what is currently playing. Is represented as an instance of `MediaMetadata`, which consists of:
+- An instance of `MediaMetadata`: information about what is currently playing. Has fields for:
     - Name of current artist, album, track
     - Duration of track
     - Album artwork
  
-Whenever one of these two states change, the player informs the `MediaSession`, which in turn
-informs the `MediaController` of the same change by sending it one of two callbacks:
+Whenever one of these two states change, the `MediaSession` informs the `MediaController`s
+of this change by sending them one of two callbacks:
 
 - `onPlaybackStateChanged()`
 - `onMediaMetadataChanged()`
 
 These controller callbacks receive as parameter the new `PlaybackState` or `MediaMetadata`. They are used to
 update the UI according to the new state received.
-
-Using the universal classes `PlaybackState` and `MediaMetadata` allows us to represent player state exactly the
-same accross all `MediaController`-`MediaSession` connections. There's no need to implement different logic for
-every client that tries to connect to your app.
 
 From the next section onwards, we will talk specifically about music apps
 (no more talking about video apps, unless explicitly mentioned).
