@@ -5,7 +5,7 @@ code.
 
 The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. However, all the flow and the logic of the app is implemented.
 
-The player/thread logic is implemented in native C++ code. This is because the player logic is totally independent of Android: we could implement a similar app in iOS using this exact same logic/code, the only difference being that we would use iOS media libraries.
+The player/thread logic is implemented in native C++ code. This is because the player logic is totally independent of Android: we could, for example, implement a similar app in iOS using this exact same logic/code, the only difference being that we would use iOS media libraries.
 
 The following section are notes that I took while reading https://developer.android.com/guide/topics/media.
 
