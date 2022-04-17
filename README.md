@@ -26,7 +26,7 @@ A decent media app is separated into two components:
 
 A decent media app in Android completely separates and decouples these two parts. Why?
 Because by doing so, the Player is not condemned to be used exclusively from the app's UI.
-Instead, the Player can be controlled also from other places, such as:
+Instead, the Player can also be controlled from other places, such as:
 - external hardware media buttons
 - Google Assistant
 - notification bar/lock screen
