@@ -39,19 +39,22 @@ The two classes are: 1) an instance of `MediaController`, which controls the UI,
 
 - The `MediaController`:
     - UI communicates exclusively with the `MediaController` (the UI never calls the player or the `MediaSession` directly).
+    - Never calls the player directly: it calls the `MediaSession` instead.
     - Issues player commands to the `MediaSession`. Commands can be either:
         - Built-in, common commands, such as play, pause, stop, and seek.
         - Extensible custom commands, used to define special behaviors unique to your app.
     - Receives callbacks from the `MediaSession` informing about player state changes in order to update the UI.
+        - These callbacks are also known as "Controller callbacks".
 - The `MediaSession`:
     - Responsible for all communication with the player.
     - The player is only called from the `MediaSession`.
     - Receives command callbacks from the `MediaController`, and forwards these commands to the player.
-    - When the player updates its state, sends a callback to the `MediaController` to notify about this update.
+        - Command callbacks are also known as "Session callbacks".
+    - When the player updates its state, sends a controller callback to the `MediaController` to notify about this update.
  
 <figure>
   <img src="docs_images/controller-session-detailed.png" alt="Detailed view of media app architecture">
-  <figcaption>Figure 2. Detailed view of media app architecture</figcaption>
+  <figcaption>Figure 2. Media app diagram with Android classes</figcaption>
 </figure>
 
 A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
