@@ -2,7 +2,7 @@
 
 Android app that implements a complete, fully-fledged architecture for a small music player using the Android Media APIs.
 
-The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the music app's architecture and design, which are explained in https://developer.android.com/guide/topics/media.
+The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the music app's architecture, which is explained in https://developer.android.com/guide/topics/media.
 
 In fact, this app can be considered as an audio Hello World app. It's much simpler than the [Universal Audio Media Player app](https://github.com/android/uamp) because it doesn't use ExoPlayer and it strictly follows only what is described in the Android docs. No bells and whistles.
 
