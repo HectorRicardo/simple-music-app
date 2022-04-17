@@ -3,7 +3,9 @@
 Android app that implements a complete, fully-fledged architecture for a small music player using the Android Media APIs and native C++
 code.
 
-The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. However, all the flow and the logic of the app is implemented.
+The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the music app's architecture and design, which are explained in https://developer.android.com/guide/topics/media.
+
+In fact, this app can be considered as an audio Hello World app. It's much simpler than the [Universal Audio Media Player app](https://github.com/android/uamp) because it doesn't use ExoPlayer and it strictly follows only what is described in the Android docs. No bells and whistles.
 
 The player/thread logic is implemented in native C++ code. This is because the player logic is totally independent of Android: we could, for example, implement a similar app in iOS using this exact same logic/code, the only difference being that we would use iOS media libraries.
 
