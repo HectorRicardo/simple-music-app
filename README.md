@@ -58,9 +58,39 @@ Each of these "places" creates its own `MediaController` and connects to your ap
 In particular, the integration with external media hardware buttons comes out-of-the-box: as long as your app
 has a `MediaSession`, these buttons will work as expected.
 
-## Player state representation in the `MediaSession`.
+## Player state representation in the `MediaSession`
 
-A `MediaSession` maintains a representation of the state of the actual player
+A `MediaSession` maintains a representation of the player's state. The term "player state" actually encompasses two things:
+- **Playback state**: The player's current operational state, represented by an instance of `PlaybackState`. Has fields for:
+    - State: Playing/Paused/Buffering/Stopped/etc..
+    - Position (seekbar progress)
+    - Valid controller actions (both built-in and custom) that can be handled in the current state.
+        - These actions define what commands and external hardware media buttons the player will
+          respond to in the current state.
+    - Active error code and error message, if any. Errors can be fatal or non-fatal:
+        -  **Fatal**: Happens when playback is interrupted and cannot resume.
+            -  The state will be ERROR (instead of Playing, Paused, etc..)
+            -  This error is cleared only when playback isn't blocked anymore.
+        - **Non-fatal**: Happens when the player cannot handle a request, but can continue to play.
+            - Player remains in a "normal" state (such as Playing or Paused).
+            - This error is cleared in the next `PlaybackState` update (or overriden, if a new error comes in).
+- **Media metadata**: information about what is playing, represented as an instance of `MediaMetadata`. Has fields for:
+    - Name of current artist, album, track
+    - Duration of track
+    - Album artwork
+ 
+Whenever one of these two things change, the `MediaSession`'s representation of the state is updated.
+And in turn, when this representation is updated, one of two callbacks is sent to the `MediaController`,
+depending on what was updated:
+- `onPlaybackStateChanged()`
+- `onMediaMetadataChanged()`
+
+These controller callbacks receive as parameter the new `PlaybackState` or `MediaMetadata`. They are used to
+update the UI according to the new state received.
+
+The advantage of this approach is that the player's state is represented exactly the same accross all
+`MediaController`-`MediaSession` connections. There's no need to implement different logic for every client
+that tries to connect to your app.
 
 From the next section onwards, we will talk specifically about music apps
 (no more talking about video apps, unless explicitly mentioned).
@@ -125,31 +155,20 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
    </service>
    ```
 
-3. Do the following in the service's `onCreate()` method:
-
+3. Create a new instance of `PlaybackState.Builder` and assign it to a final instance property of the service.
+    - Instead of creating a new builder each time, we will use this builder every time we need to update
+      the player's playback state.
+    - Since playback state updates happen quite frequently, caching the builder will greatly reduce memory
+      consumption
+5. Do the following in the service's `onCreate()` method:
     1. Instantiate a `MediaSession`.
-    2. Set the initial player state in the `MediaSession`:
-        - The state of a player is represented by an instance of `PlaybackState`, which has fields for:
-            - State: Playing/Paused/Buffering/Stopped
-            - Player position (for the seekbar)
-            - Valid controller actions (both built-in and custom) that can be handled in the current state.
-                - These actions define what commands and external hardware media buttons the Player will
-                  respond to in the current state.
-            - Active error code, if any. Errors can be fatal or non-fatal:
-                -  **Fatal**: Happens when playback is interrupted and cannot resume.
-                    -  Set the transport state to `STATE_ERROR` and specify the error with `setErrorMessage(int, CharSequence`).
-                    -  Should be cleared only when playback isn't blocked anymore
-                - **Non-fatal**: Happens when the app cannot handle a request, but can continue to play.
-                    - Player remains in a "normal" state (such as `STATE_PLAYING`) but the `PlaybackState` holds an error.
-                    - Can be cleared in the next `PlaybackState` update (or overriden, if a new error comes in).
-        - **What you must do**:
-            - Outside the `onCreate` method, create an instance of `PlaybackState` and persist it
-              as a final instance property of the service.
-            - Initialize this instance inside the onCreate
-            - Assign this instance to the `MediaSession`.
+    2. Assing an instance of `PlaybackState` to the `MediaSession`:
+        - Use the builder created in step 3 and initialize it. 
+            - A good way to initialize it is by defining some actions that you want the player to
+              respond to in its initial state, such as `ACTION_PLAY` and `ACTION_PLAY_PAUSE`.
+        - Build the builder and assign it to the `MediaSession` created in the previous step.
     3. Assign an instance of `MediaSession.Callback` to the `MediaSession`.
-        - This instance contains the callbacks that react to commands issued from a `MediaController`,
-          most likely by forwading these commands to the player.
+        - This instance contains the callbacks that forward to the player the commands issued from the `MediaController`.
         - Examples of callbacks: `onPlay()`, `onPause()`, `onSeekTo()`, `onSkipToNext()`
         - We'll see more about media session callbacks a bit later.
     5. Link the `MediaSession` to the `MediaBrowserService` by setting the media session token.
@@ -160,7 +179,7 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
     public class SimpleMusicService extends MediaBrowserServiceCompat {
       private final PlaybackStateCompat.Builder playbackStateBuilder = new PlaybackStateCompat.Builder();
       private final MediaSessionCompat.Callback mediaSessionCallbacks = new MediaSessionCompat.Callback() {
-        // Implement callbacks that react to commands issued from a MediaController
+        // Implement callbacks that react to commands issued from a MediaController,
         // most likely by forwading these commands to the player.
       };
       
