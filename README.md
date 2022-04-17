@@ -13,7 +13,7 @@ The following section are notes that I took while reading https://developer.andr
 
 This first section talks about basic concepts that apply to media apps. Media apps = both music apps and video apps.
 
-A decent media app is separated into two parts:
+A decent media app is separated into two components:
 
 - A Player that renders the media (audio/video).
 - A UI that issues commands to the player (play, pause, etc..) and displays the player's state.
@@ -24,46 +24,48 @@ A decent media app is separated into two parts:
   <figcaption>Figure 1. Basic media app diagram</figcaption>
 </figure>
 
-Android uses two classes to represent and decouple these two parts: an instance of `MediaController`, which controls the UI, and an instance of `MediaSession`, which manages the player:
+A decent media app in Android completely separates and decouples these two parts. Why?
+Because by doing so, the Player is not condemned to be used exclusively from the app's UI.
+Instead, the Player can be controlled also from other places, such as:
+- external hardware media buttons
+- Google Assistant
+- notification bar/lock screen
+
+Android provides two universal classes that decouple these two media app components. Since these
+classes are universal, they allow a media app to integrate with any other Android app/component/mechanism
+smoothly and consistently.
+
+The two classes are: 1) an instance of `MediaController`, which controls the UI, and 2) an instance of `MediaSession`, which manages the player:
 
 - The `MediaController`:
     - UI communicates exclusively with the `MediaController` (the UI never calls the player or the `MediaSession` directly).
     - Issues player commands to the `MediaSession`. Commands can be either:
         - Built-in, common commands, such as play, pause, stop, and seek.
         - Extensible custom commands, used to define special behaviors unique to your app.
-    - Receives updates from the `MediaSession` about player state changes in order to update the UI.
+    - Receives callbacks from the `MediaSession` informing about player state changes in order to update the UI.
 - The `MediaSession`:
     - Responsible for all communication with the player.
     - The player is only called from the `MediaSession`.
-    - Receives commands from the `MediaController`, and forwards these commands to the player.
-    - When the player updates its state, calls back the `MediaController` to notify about this update.
-
-These two entities communicate via a callback mechanism:
-- The `MediaSession` registers callbacks to be executed when receiving commands from the `MediaController` (depicted as "session callbacks" in the diagram below).
-- Similarly, the `MediaController` registers callbacks to be executed when receiving updates from the `MediaSession` (depicted as "controller callbacks").
-
+    - Receives command callbacks from the `MediaController`, and forwards these commands to the player.
+    - When the player updates its state, sends a callback to the `MediaController` to notify about this update.
+ 
 <figure>
   <img src="docs_images/controller-session-detailed.png" alt="Detailed view of media app architecture">
   <figcaption>Figure 2. Detailed view of media app architecture</figcaption>
 </figure>
 
 A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
-with one or more `MediaController`s simultaneously. This makes it possible for your player to be
-controlled from your app's UI as well as from other places, such as:
-   - external hardware media buttons
-   - Google Assistant
-   - etc..
-
+with one or more `MediaController`s simultaneously. This allows for your player to be
+controlled from your app's UI as well as from other places (Google Assistant, notification bar, etc..).
 Each of these "places" creates its own `MediaController` and connects to your app's `MediaSession` the same way.
-In particular, the integration with external media hardware buttons comes out-of-the-box: as long as your app
-has a `MediaSession`, these buttons will work as expected.
 
-## Player state representation in the `MediaSession`
+## Player State
 
-A `MediaSession` maintains a representation of the player's state. The term "player state" actually encompasses two things:
-- **Playback state**: The player's current operational state, represented by an instance of `PlaybackState`. Has fields for:
-    - State: Playing/Paused/Buffering/Stopped/etc..
-    - Position (seekbar progress)
+A Player entity has/maintains state, which is divided in two kinds:
+
+- **Playback state**: The player's current operational state. Is represented by an instance of `PlaybackState`, which consists of:
+    - State: Playing/Paused/Buffering/Stopped/Error/etc..
+    - Position (current progress as displayed in a seekbar)
     - Valid controller actions (both built-in and custom) that can be handled in the current state.
         - These actions define what commands and external hardware media buttons the player will
           respond to in the current state.
@@ -74,23 +76,23 @@ A `MediaSession` maintains a representation of the player's state. The term "pla
         - **Non-fatal**: Happens when the player cannot handle a request, but can continue to play.
             - Player remains in a "normal" state (such as Playing or Paused).
             - This error is cleared in the next `PlaybackState` update (or overriden, if a new error comes in).
-- **Media metadata**: information about what is playing, represented as an instance of `MediaMetadata`. Has fields for:
+- **Media metadata**: information about what is currently playing. Is represented as an instance of `MediaMetadata`, which consists of:
     - Name of current artist, album, track
     - Duration of track
     - Album artwork
  
-Whenever one of these two things change, the `MediaSession`'s representation of the state is updated.
-And in turn, when this representation is updated, one of two callbacks is sent to the `MediaController`,
-depending on what was updated:
+Whenever one of these two states change, the player informs the `MediaSession`, which in turn
+informs the `MediaController` of the same change by sending it one of two callbacks:
+
 - `onPlaybackStateChanged()`
 - `onMediaMetadataChanged()`
 
 These controller callbacks receive as parameter the new `PlaybackState` or `MediaMetadata`. They are used to
 update the UI according to the new state received.
 
-The advantage of this approach is that the player's state is represented exactly the same accross all
-`MediaController`-`MediaSession` connections. There's no need to implement different logic for every client
-that tries to connect to your app.
+Using the universal classes `PlaybackState` and `MediaMetadata` allows us to represent player state exactly the
+same accross all `MediaController`-`MediaSession` connections. There's no need to implement different logic for
+every client that tries to connect to your app.
 
 From the next section onwards, we will talk specifically about music apps
 (no more talking about video apps, unless explicitly mentioned).
