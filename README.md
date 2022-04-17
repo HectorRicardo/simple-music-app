@@ -225,9 +225,9 @@ Answer: No! You can have a graph like this:
 
 ![Allowed graph](docs_images/content_hierarchy_variation1.svg)
 
-Here we consider *Bad Guy (Billie Eilish)* to be so different that it should lie side-by-side with the other genres.
+Here we consider *Bad Guy (Billie Eilish)* to be so different that the song itself *is* another genre.
 
-Heck, a node can even be both a submenu and a playable item.
+Heck, a node can even be both a submenu and a playable item:
 
 ![Allowed graph](docs_images/content_hierarchy_variation2.svg).
 
