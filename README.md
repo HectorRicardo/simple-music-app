@@ -105,7 +105,7 @@ An audio player does not always need to have its UI visible. Once it begins to p
 the player can run as a background task. The user can switch to another app and work while
 continuing to listen.
 
-This design is implemented with a client-server architecture
+This design is implemented with a client-server architecture:
 
 - The server will be an Android service that will hold the player.
     - An Android service is a long-lived Android component that can run in the background and doesn't need a UI to run.
@@ -130,9 +130,12 @@ while the `MediaBrowser`-`MediaBrowserService` pair applies specifically to audi
 - We forcefully need an Android service so the music can play in the background. A `MediaSession` is not a service, hence we need `MediaBrowserService`.
   - And because we forcefully need `MediaBrowserService`, we also need its counterpart, the `MediaBrowser`. By itself, the `MediaController` is not enough: we need the `MediaBrowser` because it is the only entity capable of communicating with a `MediaBrowserServce`.
 
-As mentioned in the previous section, having a well-defined `MediaController-MediaSession` architecture allows your app's player (either an audio or video player) to be controlled not only from your app's UI, but also from other places. Now, for music apps, in addition to this advantage, having a well-defined `MediaBrowser`-`MediaBrowserService` architecture has two additional advantages:
+As mentioned in the previous section, having a well-defined `MediaController-MediaSession` separation allows your app's player (either an audio or video player) to be controlled not only from your app's UI, but also from other places. Now, for music apps, in addition to this advantage, having a well-defined `MediaBrowser`-`MediaBrowserService` architecture has two additional advantages:
 - It makes your app discoverable to companion devices like Android Auto and Wear OS.
-  - After discovering your app, the companion device can then take advantage of the `MediaController-MediaSession` architecture, that is, it can proceed to create its own `MediaController`, connect to your `MediaSession`, and control playback, without accessing your app's UI activity at all.
+  - After discovering your app, the companion device can then take advantage of the `MediaController-MediaSession` separation, that is, it can proceed to create its own `MediaController`, connect to your `MediaSession`, and control playback, without accessing your app's UI activity at all.
+  - Just like the `MediaController`-`MediaSession` pair, a `MediaBrowser` can only connect
+    to a single `MediaBrowserService` at a time, but a `MediaBrowserService` can connect
+    with multiple `MediaBrowser`s simultaneously.
 - It also provides an optional browsing API that lets clients query the `MediaBrowserService` and build out a
   representation of its **content hierarchy**.
   - The content hierarchy is the full media library available. It might consists of songs or media items organized hierarchically into artists, albums, playlists, etc.. We'll talk more about the content hierarchy in a bit.
@@ -160,8 +163,8 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
    ```
 
 3. Create a new instance of `PlaybackState.Builder` and assign it to a final instance property of the service.
-    - Instead of creating a new builder each time, we will use this builder every time we need to update
-      the player's playback state.
+    - We will use this builder every time we need to update the player's playback state,
+      instead of creating a new builder every time.
     - Since playback state updates happen quite frequently, caching the builder will greatly reduce memory
       consumption
 5. Do the following in the service's `onCreate()` method:
@@ -170,7 +173,7 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
         - Use the builder created in step 3 and initialize it. 
             - A good way to initialize it is by defining some actions that you want the player to
               respond to in its initial state, such as `ACTION_PLAY` and `ACTION_PLAY_PAUSE`.
-        - Build the builder and assign it to the `MediaSession` created in the previous step.
+        - Build the builder and assign it to the `MediaSession`.
     3. Assign an instance of `MediaSession.Callback` to the `MediaSession`.
         - This instance contains the callbacks that forward to the player the commands issued from the `MediaController`.
         - Examples of callbacks: `onPlay()`, `onPause()`, `onSeekTo()`, `onSkipToNext()`
@@ -179,76 +182,72 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
         - `MediaBrowser`s can then discover this session token when connecting to the `MediaBrowserService`.
         - `MediaController`s will then use the discovered token to communicate with the respective `MediaSession`.
 
-    ```java
-    public class SimpleMusicService extends MediaBrowserServiceCompat {
-      private final PlaybackStateCompat.Builder playbackStateBuilder = new PlaybackStateCompat.Builder();
-      private final MediaSessionCompat.Callback mediaSessionCallbacks = new MediaSessionCompat.Callback() {
-        // Implement callbacks that react to commands issued from a MediaController,
-        // most likely by forwading these commands to the player.
-      };
-      
-      private MediaSessionCompat mediaSession;
+This is how the `MediaBrowserService` looks up to now:
 
-      @Override
-      public void onCreate() {
-        super.onCreate();
+```java
+public class SimpleMusicService extends MediaBrowserServiceCompat {
+  private final PlaybackStateCompat.Builder playbackStateBuilder = new PlaybackStateCompat.Builder();
+  private final MediaSessionCompat.Callback mediaSessionCallbacks = new MediaSessionCompat.Callback() {
+    // Implement callbacks that react to commands issued from a MediaController,
+    // most likely by forwading these commands to the player.
+    // We'll see how to fill this out later.
+  };
 
-        // Create a MediaSession
-        mediaSession = new MediaSessionCompat(this, SimpleMusicService.class.getSimpleName());
+  private MediaSessionCompat mediaSession;
 
-        // Set an initial PlaybackState with ACTION_PLAY and ACTION_PLAY_PAUSE
-        // so these commands/media buttons can start the player
-        mediaSession.setPlaybackState(playbackStateBuilder.setActions(
-                PlaybackStateCompat.ACTION_PLAY |
-                    PlaybackStateCompat.ACTION_PLAY_PAUSE).build());
+  @Override
+  public void onCreate() {
+    super.onCreate();
 
-        // Set the media session callbacks
-        mediaSession.setCallback(mediaSessionCallbacks);
+    // Create a MediaSession
+    mediaSession = new MediaSessionCompat(this, SimpleMusicService.class.getSimpleName());
 
-        // Set the session's token so that MediaControllers can discover the session once the
-        // MediaBrowsers connect to the service.
-        setSessionToken(mediaSession.getSessionToken());
-      }
-    }
-    ```
+    // Set an initial PlaybackState with ACTION_PLAY and ACTION_PLAY_PAUSE
+    // so these commands/media buttons can start the player
+    mediaSession.setPlaybackState(playbackStateBuilder.setActions(
+            PlaybackStateCompat.ACTION_PLAY |
+                PlaybackStateCompat.ACTION_PLAY_PAUSE).build());
+
+    // Set the media session callbacks
+    mediaSession.setCallback(mediaSessionCallbacks);
+
+    // Set the session's token so that MediaControllers can discover the session once the
+    // MediaBrowsers connect to the service.
+    setSessionToken(mediaSession.getSessionToken());
+  }
+}
+```
     
 ## The Content hierarchy
 
-Before proceeding, let's explain more about the content hierarchy. The content hierarchy is the media
-library offered by your app's `MediaBrowserService`. It's a graph of nodes representing submenus
-(eg. directories) and media items (e.g. songs) that you organize as you wish. Each node has a unique ID.
-This is an example of a very simple content hierarchy:
+Before proceeding, let's explain more about the `MediaBrowserService`'s content hierarchy mentioned earlier.
+The **content hierarchy** is simply the media library offered by your app. Technically speaking,
+it's a directed graph of nodes representing submenus (eg. directories) and media items (e.g. songs)
+that you organize as you wish (for example, you organize songs into artists, albums, playlists, etc..).
+Each node in the graph has a unique ID and has between 0-N children . This is an example of a very 
+simple content hierarchy:
 
 <figure>
   <img src="docs_images/content_hierarchy_sample.svg" alt="Sample content hierarchy">
   <figcaption>Figure 4. Sample content hierarchy</figcaption>
 </figure>
 
-This content graph might translate to something like this in an app: TODO
+This content hierarchy can be browsed by `MediaBrowser`s connecting to your `MediaBrowserService`.
+If you give a `MediaBrowser` both connecting permissions and browsing permissions, you can specify the node
+from which it will be allowed to browse. You decide this in a client-per-client basis. For example,
+you could give `MediaBrowser` A permissions to access the full hierarchy, `MediaBrowser` B permissions to
+browse only alternative songs (starting from the *Alternative* node), and `MediaBrowser` C permissions
+to browse only romantic songs (starting from the *Romantic* node). Permissions will be explained more in detail
+in the next section.
 
-Depending on the permissions you give, clients connecting to your `MediaBrowserService` can access and browse this
-content hierarchy. You can also restrict clients to allow them to browse only a limited subset of
-the content hierarchy (starting from a given node). And you can define these permissions on a client-per-client basis.
-We'll talk about permissions in the next section.
-
-Every node in the depicted graph above has between 0-N children. Given a node, you can retrieve its children by
-looking at the graph. This is the most fundamental characteristic of the content hierarchy. It's also
-the only enforced requirement of the graph.
-
-The example in the image is actually a very good example for a content hierarchy. Technically speaking, the
-example graph is a [Directed Acyclic Graph (DAG)](https://en.wikipedia.org/wiki/Directed_acyclic_graph), because:
-- Its edges have direction, hence "Directed"
-  - For example, from *Romantic*, it's indicated that you can "jump" to *Shallow*.
-- It doesn't have any cycles, hence "Acyclic".
-  - Once you jump to *Shallow*, there's no way you can get back to *Romantic*.
-  - This is important since it prevents infinite loops in the browsing algorithm in your app and
-    in other apps/mechanisms connecting to your app.
+Observe that the graph in the image is acyclic, meaning that it doesn't have any cycles.
+This is important because it prevents infinite loops in the browsing algorithms of the
+`MediaBrowser`s connecting to your service. You should ensure that your content hierarchy is acyclic as well.
 
 You can see that some items, such as *Viva la Vida*, have two parents. This is completely valid,
-and it's a common characteristic of a DAG. (And think about it: some songs can be considered belonging to two genres.
-In this example, we consider Coldplay's *Viva la Vida* to be both a pop song and an alternative song).
-
-Although not strictly required by Android, content hierarchies that are DAGs are a best practice for music apps.
+and it's a common characteristic of content hierarchies. (And think about it: some songs can
+be considered belonging to two genres. In this example, we consider Coldplay's *Viva la Vida*
+to be both a pop song and an alternative song).
 
 **Question: Are the playable items only allowed to be at the last level of the graph?**
 
@@ -256,7 +255,7 @@ Answer: No! You can have a graph like this:
 
 ![Allowed graph](docs_images/content_hierarchy_variation1.svg)
 
-Here we consider *Bad Guy (Billie Eilish)* to be so different that the song itself *is* another genre.
+Here, we consider *Bad Guy (Billie Eilish)* to be so different that the song itself *is* another genre.
 
 Heck, a node can even be both a submenu and a playable item:
 
@@ -264,12 +263,19 @@ Heck, a node can even be both a submenu and a playable item:
 
 Here, imagine that by playing "Pop", you hear a narrator saying something like "Welcome to the pop music section".
 
-However, when going through these uncommon use cases, you should follow these 2 best practices
-(besides making your content hierarchy a DAG):
-- The graph root node (starting point) should not be playable.
-- The other starting point nodes from which clients are allowed to browse should not be playable either.
+However, when going through these uncommon use cases, as a best practice you should ensure
+that all the starting point nodes from which you'll give clients permission to browse are
+not playable (this isn't a requirement enforced by Android, but it's a best practice). 
+I will explain the reason for this best practice in a following section.
 
-These two are not requirements strictly enforced by Android, but it's good to follow them.
+So, for example, assuming we have Figure 6 as the content hierarchy, if you wanted to give a client
+permissions to browse only pop songs, but also allow it to listen to the narrator introducing the
+pop music section, then you will need to modify the content hierarchy to be like this:
+
+INSERT IMAGE HERE
+
+Then you will define the "Alternative starting point" as the starting node from which the client
+will be allowed to browse.
 
 ## How to handle client connections to the `MediaBrowserService`?
 
@@ -289,13 +295,13 @@ node shouldn't be playable). However, there are two special cases:
     - We call such `BrowserRoot` an empty `BrowserRoot` and its ID, an "empty media root id".
 
 The `onGetRoot()` method should return quickly. User authentication and other slow processes should
-not run in `onGetRoot()`, but on `onLoadChildren()`, which we explain next.
+not run in `onGetRoot()`, but in `onLoadChildren()`, which we explain next.
 
 ## How can a client build a representation of your app's content hierarchy?
 
-If the value returned from `onGetRoot` is non-null, a client should now attempt to traverse the service's content hierarchy to build a UI representation of it. (A client should try to do this even if the `BrowserRoot` returned was the empty `BrowserRoot`, because the client doesn't have a way to know that). The client will call the `MediaBrowser`'s `subscribe()` method with the ID of the `BrowserRoot` returned from `onGetRoot`. The `subscribe` method will end up calling the service's `onLoadChildren` method, which will return the children of the node passed in to `subscribe`.
+If the value returned from `onGetRoot` is non-null, a client will now attempt to traverse the service's content hierarchy to build a UI representation of it. (A client will try to do this even if the `BrowserRoot` returned was the empty `BrowserRoot`, because the client doesn't have a way to know that).
 
-Here's the flow explained in detail. The algorithm is iterative:
+This is the flow/algorithm that the client will follow. The algorithm is iterative:
 
 1. The client calls the `MediaBrowserCompat.subscribe()` method, passing in the following as parameters:
     - The ID of the node whose children you want to obtain.
@@ -309,7 +315,7 @@ Here's the flow explained in detail. The algorithm is iterative:
     with an actual `return`, but by calling `result.sendResult()` (`result` is the second parameter of `onLoadChildren`).
     - The children (instances of `MediaItem`) returned by this method should not contain icon bitmaps. Use a Uri instead by calling `setIconUri()` when you
      build the `MediaDescription` for each item.
-4. The callback that was passed in in step 1 is executed on the client's side. This callback has as its parameter the list of children retrieved in the previous step.
+4. The callback that was passed in in step 1 is executed on the client's side. This callback receives as parameter the list of children retrieved in the previous step.
     - The client uses this list to partially build (keep building) a menu of the content hierarchy.
 5. The client looks at each `MediaItem` in the results.
     - If `MediaItem.isBrowsable()` is true, then the client jumps back to step 1, but now passing the ID of the current `MediaItem`.
