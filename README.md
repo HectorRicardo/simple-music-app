@@ -53,7 +53,7 @@ The two classes are: 1) an instance of `MediaController`, which controls the UI,
     - When the player updates its state, sends a controller callback to the `MediaController` to notify about this update.
  
 <figure>
-  <img src="docs_images/controller-session-detailed.png" alt="Detailed view of media app architecture">
+  <img src="docs_images/media-app-with-android-classes.png" alt="Media app diagram with Android classe">
   <figcaption>Figure 2. Media app diagram with Android classes</figcaption>
 </figure>
 
