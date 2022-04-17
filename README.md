@@ -5,7 +5,7 @@ code.
 
 The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. However, all the flow and the logic of the app is implemented.
 
-The player/thread logic is implemented in native C++ code. This is because the player logic is totally independent of Android: we could implement a similar app in iOS using this exact same logic, the only difference being that we would use iOS media libraries.
+The player/thread logic is implemented in native C++ code. This is because the player logic is totally independent of Android: we could implement a similar app in iOS using this exact same logic/code, the only difference being that we would use iOS media libraries.
 
 The following section are notes that I took while reading https://developer.android.com/guide/topics/media.
 
@@ -88,11 +88,11 @@ Doesn't the `MediaController`-`MediaSession` pair suffice?**
 - The `MediaController`-`MediaSession` pair applies both to audio and video apps,
 while the `MediaBrowser`-`MediaBrowserService` pair applies specifically to audio apps only.
   - The `MediaBrowser`-`MediaBrowserService` pair is used to implement to the client-server architecture we've just described, and video apps don't follow this architecture (only audio apps do).
-  - The `MediaController`-`MediaSession` pair is not tied to any architecture so it can accomodate both to music and video apps.
+  - The `MediaController`-`MediaSession` pair is not tied to any architecture so it can accomodate both music and video apps.
 - We forcefully need an Android service so the music can play in the background. A `MediaSession` is not a service, hence we need `MediaBrowserService`.
   - And because we forcefully need `MediaBrowserService`, we also need its counterpart, the `MediaBrowser`. By itself, the `MediaController` is not enough: we need the `MediaBrowser` because it is the only entity capable of communicating with a `MediaBrowserServce`.
 
-As mentioned in the previous section, having a well-defined `MediaController-MediaSession` architecture allows your app's media session (both audio and video sessions) to be controlled not only from your app's UI, but also from other places. Now, for music apps, in addition to this advantage, having a well-defined `MediaBrowserService` has two additional advantages:
+As mentioned in the previous section, having a well-defined `MediaController-MediaSession` architecture allows your app's player (either an audio or video player) to be controlled not only from your app's UI, but also from other places. Now, for music apps, in addition to this advantage, having a well-defined `MediaBrowser`-`MediaBrowserService` architecture has two additional advantages:
 - It makes your app discoverable to companion devices like Android Auto and Wear OS.
   - After discovering your app, the companion device can then take advantage of the `MediaController-MediaSession` architecture, that is, it can proceed to create its own `MediaController`, connect to your `MediaSession`, and control playback, without accessing your app's UI activity at all.
 - It also provides an optional browsing API that lets clients query the `MediaBrowserService` and build out a
@@ -125,36 +125,39 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
 
     1. Instantiate a `MediaSession`.
     2. Set the initial player state in the `MediaSession`:
-        - The state of a player is represented by two classes:
-            - `PlaybackState`: describes the player's current operational state. Has fields describing:
-                - State: Playing/Paused/Buffering/Stopped
-                - Player position (for the seekbar)
-                - Valid controller actions (both built-in and custom) that can be handled in the current state.
-                    - These actions define what commands and external hardware media buttons the Player will be able to
-                      respond to in the current state.
-                    - Special case: The `ACTION_PLAY_PAUSE` can only be triggered by an external button. If the player is in the PLAYING state,
-                      it will correspond to a pause command, else it will correspond to a play command.
-                - Active error code, if any. Errors can be fatal or non-fatal:
-                    -  **Fatal**: Happens when playback is interrupted and cannot resume.
-                        -  Set the transport state to `STATE_ERROR` and specify the error with `setErrorMessage(int, CharSequence`).
-                        -  Will be cleared only when playback isn't blocked anymore
-                    - **Non-fatal**: Happens when the app cannot handle a request, but can continue to play.
-                        - Player remains in a "normal" state (such as `STATE_PLAYING`) but the `PlaybackState` holds an error.
-                        - Can be cleared in the next `PlaybackState` update (or overriden, if a new error comes in).
-            - `MediaMetadata`: describes the material currently playing.
-                - Name of current artist, album, track
-                - Duration of track
-                - Album artwork
-        - **What you must do**: Create and initialize instances of `PlaybackState` and `MediaMetadata` and assign them to the
-          `MediaSession` (caching the builders for reuse).
-    3. Create an instance of `MediaSession.Callback` and assign it to the `MediaSession`. We'll see more about media session callbacks a bit later.
-    4. Set the media session token.
+        - The state of a player is represented by an instance of `PlaybackState`, which has fields for:
+            - State: Playing/Paused/Buffering/Stopped
+            - Player position (for the seekbar)
+            - Valid controller actions (both built-in and custom) that can be handled in the current state.
+                - These actions define what commands and external hardware media buttons the Player will
+                  respond to in the current state.
+            - Active error code, if any. Errors can be fatal or non-fatal:
+                -  **Fatal**: Happens when playback is interrupted and cannot resume.
+                    -  Set the transport state to `STATE_ERROR` and specify the error with `setErrorMessage(int, CharSequence`).
+                    -  Should be cleared only when playback isn't blocked anymore
+                - **Non-fatal**: Happens when the app cannot handle a request, but can continue to play.
+                    - Player remains in a "normal" state (such as `STATE_PLAYING`) but the `PlaybackState` holds an error.
+                    - Can be cleared in the next `PlaybackState` update (or overriden, if a new error comes in).
+        - **What you must do**:
+            - Outside the `onCreate` method, create an instance of `PlaybackState` and persist it
+              as a final instance property of the service.
+            - Initialize this instance inside the onCreate
+            - Assign this instance to the `MediaSession`.
+    3. Assign an instance of `MediaSession.Callback` to the `MediaSession`.
+        - This instance contains the callbacks that react to commands issued from a `MediaController`,
+          most likely by forwading these commands to the player.
+        - Examples of callbacks: `onPlay()`, `onPause()`, `onSeekTo()`, `onSkipToNext()`
+        - We'll see more about media session callbacks a bit later.
+    5. Link the `MediaSession` to the `MediaBrowserService` by setting the media session token.
+        - `MediaBrowser`s can then discover this session token when connecting to the `MediaBrowserService`.
+        - `MediaController`s will then use the discovered token to communicate with the respective `MediaSession`.
 
     ```java
     public class SimpleMusicService extends MediaBrowserServiceCompat {
       private final PlaybackStateCompat.Builder playbackStateBuilder = new PlaybackStateCompat.Builder();
       private final MediaSessionCompat.Callback mediaSessionCallbacks = new MediaSessionCompat.Callback() {
-        // Implement callbacks that handle responses to commands issued from a media controller...
+        // Implement callbacks that react to commands issued from a MediaController
+        // most likely by forwading these commands to the player.
       };
       
       private MediaSessionCompat mediaSession;
@@ -163,7 +166,7 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
       public void onCreate() {
         super.onCreate();
 
-        // Create a MediaSessionCompat
+        // Create a MediaSession
         mediaSession = new MediaSessionCompat(this, SimpleMusicService.class.getSimpleName());
 
         // Set an initial PlaybackState with ACTION_PLAY and ACTION_PLAY_PAUSE
@@ -175,7 +178,8 @@ all calls to `registerMediaButtonReceiver()` and any methods from `RemoteControl
         // Set the media session callbacks
         mediaSession.setCallback(mediaSessionCallbacks);
 
-        // Set the session's token so that client activities can communicate with it.
+        // Set the session's token so that MediaControllers can discover the session once the
+        // MediaBrowsers connect to the service.
         setSessionToken(mediaSession.getSessionToken());
       }
     }
