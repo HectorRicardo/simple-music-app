@@ -58,6 +58,10 @@ Each of these "places" creates its own `MediaController` and connects to your ap
 In particular, the integration with external media hardware buttons comes out-of-the-box: as long as your app
 has a `MediaSession`, these buttons will work as expected.
 
+## Player state representation in the `MediaSession`.
+
+A `MediaSession` maintains a representation of the state of the actual player
+
 From the next section onwards, we will talk specifically about music apps
 (no more talking about video apps, unless explicitly mentioned).
 
