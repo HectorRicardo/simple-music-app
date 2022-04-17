@@ -11,7 +11,7 @@ The following section are notes that I took while reading https://developer.andr
 
 ## General concepts: Media app overview
 
-This first section talks about basic concepts that apply to media apps. Media apps = both music apps and video apps.
+This first section talks about basic concepts that apply to all media apps. Media apps = both music apps and video apps.
 
 A decent media app is separated into two components:
 
