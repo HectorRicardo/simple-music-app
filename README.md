@@ -120,6 +120,8 @@ This design is implemented with a client-server architecture:
   <figcaption>Figure 3. Client-server architecture for music apps</figcaption>
 </figure>
 
+A `MediaBrowser` doesn't necessarily have to live in the same app/process as the `MediaBrowserService`. It will try to connect with a `MediaBrowserService`, and if the `MediaBrowserService` grants it permissions, the connection will be stablished.
+
 **Question: why do we need to introduce yet another layer, the `MediaBrowser`-`MediaBrowserService` pair?
 Doesn't the `MediaController`-`MediaSession` pair suffice?**
 
@@ -136,9 +138,11 @@ As mentioned in the previous section, having a well-defined `MediaController-Med
   - Just like the `MediaController`-`MediaSession` pair, a `MediaBrowser` can only connect
     to a single `MediaBrowserService` at a time, but a `MediaBrowserService` can connect
     with multiple `MediaBrowser`s simultaneously.
-- It also provides an optional browsing API that lets clients query the `MediaBrowserService` and build out a
+- It also provides an optional browsing API that lets `MediaBrowser`s query the `MediaBrowserService` and build out a
   representation of its **content hierarchy**.
-  - The content hierarchy is the full media library available. It might consists of songs or media items organized hierarchically into artists, albums, playlists, etc.. We'll talk more about the content hierarchy in a bit.
+  - The content hierarchy is the media library offered by the app. It might consists of songs or recordings organized hierarchically into artists, albums, playlists, etc.
+  - `MediaBrowser`s wanting to browse the content hierarchy must be granted browsing permission to do so. Browsing permissions are different from the connection permissions mentioned earlier.
+  - We will see more about these topics in a subsequent section.
 
 ## Note: Use Compat classes (NOTE: Where should I place this paragraph?)
 
@@ -221,47 +225,49 @@ public class SimpleMusicService extends MediaBrowserServiceCompat {
 ## The Content hierarchy
 
 Before proceeding, let's explain more about the `MediaBrowserService`'s content hierarchy mentioned earlier.
-The **content hierarchy** is simply the media library offered by your app. Technically speaking,
-it's a directed graph of nodes representing submenus (eg. directories) and media items (e.g. songs)
-that you organize as you wish (for example, you organize songs into artists, albums, playlists, etc..).
-Each node in the graph has a unique ID and has between 0-N children . This is an example of a very 
-simple content hierarchy:
+The **content hierarchy** is simply the media collection library offered by your app. `MediaBrowser`s connecting to your `MediaBrowserService` may be able to browse this collection so they know what songs/recordings can be played.
+
+Technically speaking, the content hierarchy is a directed unweighted graph of nodes,
+where each node represents a "media item". A media item can be different things,
+depending if it's browsable and/or playable:
+
+- If a media item is playable but not browsable, it represents a song, recording, etc..
+- If a media item is browsable but not playable, it is a submenu/directory. Example: a playlist or album.
+- Rare: If a media item is both playable and browsable, it is a submenu/directory, and it also has a song/recording associated to it.
+- If a media items is neither playable nor browsable, it's useless. It's technically possible to create such media item, but I can't think of a use case for it.
+
+You organize nodes/media items as you wish (for example, you may organize
+songs into albums, playlists, artists, etc..). Each node has a unique ID, and it has between 0-N children.
+This is an example of a very simple content hierarchy:
 
 <figure>
   <img src="docs_images/content_hierarchy_sample.svg" alt="Sample content hierarchy">
   <figcaption>Figure 4. Sample content hierarchy</figcaption>
 </figure>
 
-This content hierarchy can be browsed by `MediaBrowser`s connecting to your `MediaBrowserService`.
-If you give a `MediaBrowser` both connecting permissions and browsing permissions, you can specify the node
-from which it will be allowed to browse. You decide this in a client-per-client basis. For example,
-you could give `MediaBrowser` A permissions to access the full hierarchy, `MediaBrowser` B permissions to
-browse only alternative songs (starting from the *Alternative* node), and `MediaBrowser` C permissions
-to browse only romantic songs (starting from the *Romantic* node). Permissions will be explained more in detail
-in the next section.
+This graph is merely conceptual and may not exist as such in the app. You don't have to create an actual graph data structure. However, your app should have a "mechanism" that, given a node ID, lets you know:
+- The children of that node.
+- If the node represents a playable media item, the media resource associated to that media item.
+
+It's up to you what this "mechanism" will look like. It could be an actual graph, but it could also be a hashmap, an 2D array of adjacencies, etc.. Just meet the contract of the "mechanism".
+
+The content hierarchy can be browsed by a `MediaBrowser` client that connected to your `MediaBrowserService` and that was given browsing permissions (you'll learn about permissions in the next section). You specify the starting node from which it will be allowed to browse, and you decide this in a client-per-client basis. So, for example, you could give `MediaBrowser` A permissions to access the full hierarchy, `MediaBrowser` B permissions to browse only alternative songs (starting from the *Alternative* node), and `MediaBrowser` C permissions
+to browse only romantic songs (starting from the *Romantic* node).
 
 Observe that the graph in the image is acyclic, meaning that it doesn't have any cycles.
 This is important because it prevents infinite loops in the browsing algorithms of the
 `MediaBrowser`s connecting to your service. You should ensure that your content hierarchy is acyclic as well.
+Android won't validate this for you.
 
-You can see that some items, such as *Viva la Vida*, have two parents. This is completely valid,
-and it's a common characteristic of content hierarchies. (And think about it: some songs can
-be considered belonging to two genres. In this example, we consider Coldplay's *Viva la Vida*
-to be both a pop song and an alternative song).
-
-**Question: Are the playable items only allowed to be at the last level of the graph?**
+In the figure, you can see that several media items, such as *Viva la Vida*, have two parents.
+This is completely valid, and it's a common characteristic of content hierarchies.
+(And think about it: some songs can be considered belonging to two genres, such as *Viva la Vida* in this example).
 
 Answer: No! You can have a graph like this:
 
 ![Allowed graph](docs_images/content_hierarchy_variation1.svg)
 
-Here, we consider *Bad Guy (Billie Eilish)* to be so different that the song itself *is* another genre.
-
-Heck, a node can even be both a submenu and a playable item:
-
 ![Allowed graph](docs_images/content_hierarchy_variation2.svg).
-
-Here, imagine that by playing "Pop", you hear a narrator saying something like "Welcome to the pop music section".
 
 However, when going through these uncommon use cases, as a best practice you should ensure
 that all the starting point nodes from which you'll give clients permission to browse are
@@ -272,10 +278,27 @@ So, for example, assuming we have Figure 6 as the content hierarchy, if you want
 permissions to browse only pop songs, but also allow it to listen to the narrator introducing the
 pop music section, then you will need to modify the content hierarchy to be like this:
 
-INSERT IMAGE HERE
+<figure>
+  <img src="docs_images/content_hierarchy_sample_workaround.svg" alt="Workaround">
+  <figcaption>
+    Figure 7. Workaround to only allow clients to browse pop songs,
+    but allowing them as way to hear the narrator introduction to the pop section.
+  </figcaption>
+</figure>
 
 Then you will define the "Alternative starting point" as the starting node from which the client
-will be allowed to browse.
+will be allowed to browse. (There's nothing wrong with having several, "unreachable" starting points.
+It's still a directed graph).
+
+Again, we're doing this because we're following the best practice of making all starting points non-playable.
+I will explain the reasoning for this best practice in a subsequent section.
+
+**Question: What if I want to allow a client to browse the full graph except for one node? That is, what if I want to hide only one node to a client?**
+
+Unfortunately, it's not possible to do this in a simple way. You cannot express node visibility permissions in terms
+of "hiding" nodes, only in terms of selecting which nodes to show. You will need to create new parent nodes that point to the nodes you want the client to see.
+
+For example, assuming we have Figure 6 as the content hierarchy, if you wanted to hide *Viva la Vida* to the client but let it browse the rest of the content hierarchy, you'll need to make the graph look like this:
 
 ## How to handle client connections to the `MediaBrowserService`?
 
