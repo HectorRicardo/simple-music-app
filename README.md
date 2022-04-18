@@ -103,21 +103,47 @@ From this section onwards, we'll talk specifically about music apps
 
 An audio player does not always need to have its UI visible. Once it begins to play audio, 
 the player can run as a background task. The user can switch to another app or
-lock the screen while continuing to listen.
+lock the device while continuing to listen.
 
-To achieve this, the music player must live within an Android service.
+To achieve this, the audio player must live within an Android service.
 An Android service is a long-lived Android component that can run in the
-background and doesn't need a UI to run. Its lifecycle is independent of
-the activity's lifecycle. So even if your app's activity is stopped or
-destroyed (because you switched to another task/you pressed the Android Back
-button from the activity), your player will continue to live, because the Android service
-is still alive.
+background and doesn't need a UI activity to run. Its lifecycle is independent
+of the activity's lifecycle.
 
-Android offers a class precisely for services for music apps: the `MediaBrowserService`.
+Let's dive a bit into Android services before proceeding:
+
+An Android service's lifetime depends on whether it is *started* and/or *bound*.
+
+- **Bound**: One or several activities have bound/linked to the service. As long as the number of activities bound to the service is greater than 0, the service will remain alive.
+- **Started**: The service was started and it will remain alive until it is stopped (or Android runs low in memory and kills the whole app/process). In this state, the service doesn't need any bound activities to remain alive.
+
+When a service is created, it is initially created into one of these two states. To be precise with my words, you can't  actually create a service directly. Instead, you do one of these:
+- Bind an activity to the service. The service will be created if it hasn't been created yet. The initial state of the service will be "Bound".
+- Start the service. Again, the service is created if it hasn't been created yet. Its initial state will be "Started".
+
+A bound service can then be started, and a started service can then be bound. Both of these actions put the service in the "Bound+Started" state.
+
+
+The service is created when it is started in response to a media button or when an activity binds to it (after connecting via its MediaBrowser)
+
+
+
+
+
+Assuming you started the service beforehand,
+if your activity is stopped or destroyed (because you switched to another
+task/you pressed the Android Back button from the activity), your player
+will remain alive/continue to play, because the Android service is still alive.
+
+Android offers a Service class precisely for music apps: the `MediaBrowserService`.
 This service will own the player instance and its associated `MediaSession`. Why the `MediaSession`
 as well? Because you probably want the player to be controlled from other places
-even if your app's activity is destroyed. Otherwise, if the `MediaSession` lives within
-the activity
+even if your app's activity is destroyed. Otherwise, if the `MediaSession` lived within
+the activity, then it would be destroyed when the activity is destroyed. This would imply that your
+player could only be controlled from external places (e.g. Google Assistant)
+when the activity was alive.
+
+A `MediaBrowserService` comes along with a `MediaBrowser`. 
 
 
 
@@ -358,6 +384,11 @@ This is the flow/algorithm that the client will follow. The algorithm is iterati
     - The client uses this list to partially build (keep building) a menu of the content hierarchy.
 5. The client looks at each `MediaItem` in the results.
     - If `MediaItem.isBrowsable()` is true, then the client jumps back to step 1, but now passing the ID of the current `MediaItem`.
+
+
+
+
+The service is created when it is started in response to a media button or when an activity binds to it (after connecting via its MediaBrowser).
 
 ## Playback Resumption
 
