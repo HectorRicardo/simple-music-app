@@ -107,21 +107,28 @@ lock the device while continuing to listen.
 
 To achieve this, the audio player must live within an Android service.
 An Android service is a long-lived Android component that can run in the
-background and doesn't need a UI activity to run. Its lifecycle is independent
-of the activity's lifecycle.
+background without needing a UI activity. The service's lifecycle is independent
+of the activity's lifecycle. Your app's activity could have been
+stopped (if you switched to another app) or destroyed (if you pressed the Back button
+while on the activity), but your service may keep running.
 
-Let's dive a bit into Android services before proceeding:
+---
+Reminder: Lifecycle of a service
 
-An Android service's lifetime depends on whether it is *started* and/or *bound*.
+An Android service's lifetime depends on whether or not it is *started* and/or *bound*.
 
-- **Bound**: One or several activities have bound/linked to the service. As long as the number of activities bound to the service is greater than 0, the service will remain alive.
-- **Started**: The service was started and it will remain alive until it is stopped (or Android runs low in memory and kills the whole app/process). In this state, the service doesn't need any bound activities to remain alive.
+- **Bound**: One or several activities are bound/linked to the service.
+- **Started**: The service was put in the STARTED state, for example, by calling `startService()`.
 
-When a service is created, it is initially created into one of these two states. To be precise with my words, you can't  actually create a service directly. Instead, you do one of these:
-- Bind an activity to the service. The service will be created if it hasn't been created yet. The initial state of the service will be "Bound".
-- Start the service. Again, the service is created if it hasn't been created yet. Its initial state will be "Started".
+A service can be both bound and started. As long as a service is in at least one of these states, it won't be destroyed.
 
-A bound service can then be started, and a started service can then be bound. Both of these actions put the service in the "Bound+Started" state.
+When a service is created, it is initially created into one of these two states. To be precise with my words, you can't actually create a service directly. Instead, you do it indirectly by doing one of this:
+- Bind an activity to the service. The service will be created
+  if it doesn't exist yet. The initial state of the service will be "Bound".
+- Start the service. Again, the service is created if doesn't
+  exist yet. Its initial state will be "Started".
+
+A bound service can then be started, and a started service can then be bound to an activity. You can stop a started service, and you can unbind an activity from a bound service. But if at any given moment, the service happens to be unbound and stopped, it is destroyed. 
 
 
 The service is created when it is started in response to a media button or when an activity binds to it (after connecting via its MediaBrowser)
