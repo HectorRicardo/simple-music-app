@@ -96,19 +96,35 @@ of this change by sending them one of two callbacks:
 These controller callbacks receive as parameter the new `PlaybackState` or `MediaMetadata`. They are used to
 update the UI according to the new state received.
 
-From the next section onwards, we will talk specifically about music apps
-(no more talking about video apps, unless explicitly mentioned).
-
 ## Design/Architecture of music apps
 
+From this section onwards, we'll talk specifically about music apps
+(no more talking about general media apps or video apps, unless explicitly mentioned).
+
 An audio player does not always need to have its UI visible. Once it begins to play audio, 
-the player can run as a background task. The user can switch to another app and work while
-continuing to listen.
+the player can run as a background task. The user can switch to another app or
+lock the screen while continuing to listen.
+
+To achieve this, the music player must live within an Android service.
+An Android service is a long-lived Android component that can run in the
+background and doesn't need a UI to run. Its lifecycle is independent of
+the activity's lifecycle. So even if your app's activity is stopped or
+destroyed (because you switched to another task/you pressed the Android Back
+button from the activity), your player will continue to live, because the Android service
+is still alive.
+
+Android offers a class precisely for services for music apps: the `MediaBrowserService`.
+This service will own the player instance and its associated `MediaSession`. Why the `MediaSession`
+as well? Because you probably want the player to be controlled from other places
+even if your app's activity is destroyed. Otherwise, if the `MediaSession` lives within
+the activity
+
+
+
 
 This design is implemented with a client-server architecture:
 
 - The server will be an Android service that will hold the player.
-    - An Android service is a long-lived Android component that can run in the background and doesn't need a UI to run.
     - Implemented as a subclass of `MediaBrowserService`.
     - Will hold the `MediaSession` and the player.
 - The client is an Activity for the UI.
