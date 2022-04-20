@@ -128,7 +128,7 @@ When a service is created, it is initially created into one of these two states.
 - Start the service. Again, the service is created if doesn't
   exist yet. Its initial state will be "Started".
 
-A bound service can then be started, and a started service can then be bound to an activity. You can stop a started service, and you can unbind an activity from a bound service. But if at any given moment, the service happens to be unbound and stopped, it is destroyed. 
+A bound service can then be started, and a started service can then be bound to an activity. You can stop a started service, and you can unbind an activity from a bound service. But once the service happens to be unbound and stopped, it is destroyed. 
 
 
 The service is created when it is started in response to a media button or when an activity binds to it (after connecting via its MediaBrowser)
