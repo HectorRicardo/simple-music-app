@@ -115,40 +115,30 @@ while on the activity), but your service may keep running.
 ---
 Reminder: Lifecycle of a service
 
-An Android service's lifetime depends on whether or not it is *started* and/or *bound*.
+A service remains alive as long as it's *bound*, *started*, or both:
+- **Bound**: One or several Android contexts (such as activities, other services, etc..) are bound/linked to the service. After being bound, these contexts are known as "clients".
+- **Started**: The service is in the STARTED state.
 
-- **Bound**: One or several activities are bound/linked to the service.
-- **Started**: The service was put in the STARTED state, for example, by calling `startService()`.
-
-A service can be both bound and started. As long as a service is in at least one of these states, it won't be destroyed.
-
-When a service is created, it is initially created into one of these two states. To be precise with my words, you can't actually create a service directly. Instead, you do it indirectly by doing one of this:
-- Bind an activity to the service. The service will be created
-  if it doesn't exist yet. The initial state of the service will be "Bound".
+When a service is created, it is initially created into one of these two states. You can't actually create a service directly. Instead, you do it indirectly by doing one of this:
+- Bind a client to the service. The service will be created
+  if it doesn't exist yet, and it will be bound to the client.
 - Start the service. Again, the service is created if doesn't
   exist yet. Its initial state will be "Started".
 
-A bound service can then be started, and a started service can then be bound to an activity. You can stop a started service, and you can unbind an activity from a bound service. But once the service happens to be unbound and stopped, it is destroyed. 
+A bound service can then be started, and a started service can then be bound to one or many clients. You can stop a started service, and you can unbind a client from a bound service as often as you wish. But once the service happens to be both unbound and stopped, it is immediately destroyed. 
 
+IMAGEN diagram flowchart
+
+---
+
+Android offers two classes for implementing a client-service architecture in a music app: the `MediaBrowserService` and the `MediaBrowser`.
+- The `MediaBrowserService` will own the player instance and its associated `MediaSession`.
+  Why also the`MediaSession`? Because you probably want the player to be controlled from other places as well,
+  even if your app's activity is destroyed. Otherwise, if the `MediaSession` lived within the activity,
+  then it would be destroyed when the activity is destroyed.This would imply that your player could only be controlled from external places (e.g. Google Assistant)
+when the activity was alive.
 
 The service is created when it is started in response to a media button or when an activity binds to it (after connecting via its MediaBrowser)
-
-
-
-
-
-Assuming you started the service beforehand,
-if your activity is stopped or destroyed (because you switched to another
-task/you pressed the Android Back button from the activity), your player
-will remain alive/continue to play, because the Android service is still alive.
-
-Android offers a Service class precisely for music apps: the `MediaBrowserService`.
-This service will own the player instance and its associated `MediaSession`. Why the `MediaSession`
-as well? Because you probably want the player to be controlled from other places
-even if your app's activity is destroyed. Otherwise, if the `MediaSession` lived within
-the activity, then it would be destroyed when the activity is destroyed. This would imply that your
-player could only be controlled from external places (e.g. Google Assistant)
-when the activity was alive.
 
 A `MediaBrowserService` comes along with a `MediaBrowser`. 
 
