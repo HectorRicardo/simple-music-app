@@ -8,7 +8,39 @@ This repository can be considered as a practical Android "Hello World" app for m
 
 I am going to guide you, step by step, through the whole process of creating this app from scratch. Every step is a commit in the repo's history. Please follow along the commits in the history section of this repo as you read.
 
-## Step 1.
+## Step 1: Start by adding a service.
+
+Let's start with a rather obvious aspect of mobile music players.
+
+Any decent mobile music-playing app has the capacity to keep playing while it's
+in the background. Think about Spotify, YouTube Music, etc.. When you play a
+song and minimize the app (or even lock the device), the song keeps playing in
+the background.
+
+In Android, your app needs to use a *service* to achieve this. A service is an
+app component that has the ability to keep running in the background without
+needing a UI activity to be visible. The service's lifecycle is independent of
+the activity's lifecycle. Your activity could have been stopped (if you switched
+to another app) or destroyed (if you pressed the Back button while on the
+activity), but your service may keep running.
+
+A service remains alive as long as it's *bound*, *started*, or both:
+- **Bound**: One or several Android component(s) (such as activities, other
+  services, etc..) are bound/linked to the service. After being bound, these
+  components are known as "clients".
+- **Started**: The service is in the STARTED state.
+
+When a service is created, it is initially created into one of these two states.
+You can't actually create a service directly. Instead, you do it indirectly by
+doing one of this:
+- Bind a client to the service. The service will be created
+  if it doesn't exist yet, and it will be initially bound to the client.
+- Start the service. Again, the service is created if doesn't
+  exist yet. Its initial state will be "Started".
+
+A bound service can then be started, and a started service can then be bound to one or many clients. You can stop a started service, and you can unbind a client from a bound service as often as you wish. But once the service happens to be both unbound and stopped, it is immediately destroyed. 
+
+![image](docs_images/service-lifecycle.png)
 
 
 
@@ -122,25 +154,6 @@ background without needing a UI activity. The service's lifecycle is independent
 of the activity's lifecycle. Your app's activity could have been
 stopped (if you switched to another app) or destroyed (if you pressed the Back button
 while on the activity), but your service may keep running.
-
----
-Reminder: Lifecycle of a service
-
-A service remains alive as long as it's *bound*, *started*, or both:
-- **Bound**: One or several Android contexts (such as activities, other services, etc..) are bound/linked to the service. After being bound, these contexts are known as "clients".
-- **Started**: The service is in the STARTED state.
-
-When a service is created, it is initially created into one of these two states. You can't actually create a service directly. Instead, you do it indirectly by doing one of this:
-- Bind a client to the service. The service will be created
-  if it doesn't exist yet, and it will be initially bound to the client.
-- Start the service. Again, the service is created if doesn't
-  exist yet. Its initial state will be "Started".
-
-A bound service can then be started, and a started service can then be bound to one or many clients. You can stop a started service, and you can unbind a client from a bound service as often as you wish. But once the service happens to be both unbound and stopped, it is immediately destroyed. 
-
-![image](docs_images/service-lifecycle.png)
-
----
 
 Android offers a Service class precisely for music apps: the `MediaBrowserService`. This service will own:
 - The player: This way, the player can continue living/playing even if your app's activity is destroyed.
