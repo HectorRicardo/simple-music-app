@@ -1,10 +1,12 @@
 # Simple Music App
 
-Educational Android app that implements a complete, fully-fledged architecture for a small music player using the Android Media APIs.
+Educational Android app that demonstrates how to implement a complete, fully-fledged architecture for a small music player using the Android Media APIs.
 
-The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the app's architecture, which is explained in https://developer.android.com/guide/topics/media.
+The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the app's architecture.
 
-In fact, this app can be considered as an audio Hello World app. It's much simpler than the [Universal Audio Media Player app](https://github.com/android/uamp) because it doesn't use ExoPlayer and it strictly follows only what is described in the Android docs. No bells and whistles.
+This repository can be considered as a practical Android "Hello World" app for music players. It's much simpler than the [Universal Audio Media Player app](https://github.com/android/uamp) because it doesn't use ExoPlayer and it strictly follows only what is described in the Android docs (https://developer.android.com/guide/topics/media-apps/media-apps-overview). No bells and whistles.
+
+I am going to guide you, step by step, through the whole process of creating this app from scratch. Every step is a commit in the repo's history. Please follow along the commits in the history section of this repo as you read.
 
 The following section are notes that I took while reading the Android docs.
 
