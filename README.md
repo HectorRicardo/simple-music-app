@@ -1,6 +1,6 @@
 # Simple Music App
 
-Educational Android app that demonstrates how to implement a complete, fully-fledged architecture for a small music player using the Android Media APIs.
+Educational Android app that demonstrates how to implement a complete, fully fledged architecture for a small music player using the Android Media APIs.
 
 The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the app's architecture.
 
@@ -8,7 +8,16 @@ This repository can be considered as a practical Android "Hello World" app for m
 
 I am going to guide you, step by step, through the whole process of creating this app from scratch. Every step is a commit in the repo's history. Please follow along the commits in the history section of this repo as you read.
 
+## Step 1.
+
+
+
 The following section are notes that I took while reading the Android docs.
+
+
+An audio player does not always need to have its UI visible. Once it begins to play audio, 
+the player can run as a background task. The user can switch to another app or
+lock the device while continuing to listen.
 
 ## General concepts: Media app overview
 
