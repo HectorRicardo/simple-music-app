@@ -121,43 +121,39 @@ A service remains alive as long as it's *bound*, *started*, or both:
 
 When a service is created, it is initially created into one of these two states. You can't actually create a service directly. Instead, you do it indirectly by doing one of this:
 - Bind a client to the service. The service will be created
-  if it doesn't exist yet, and it will be bound to the client.
+  if it doesn't exist yet, and it will be initially bound to the client.
 - Start the service. Again, the service is created if doesn't
   exist yet. Its initial state will be "Started".
 
 A bound service can then be started, and a started service can then be bound to one or many clients. You can stop a started service, and you can unbind a client from a bound service as often as you wish. But once the service happens to be both unbound and stopped, it is immediately destroyed. 
 
-IMAGEN diagram flowchart
+![image](docs_images/service-lifecycle.png)
 
 ---
 
-Android offers two classes for implementing a client-service architecture in a music app: the `MediaBrowserService` and the `MediaBrowser`.
-- The `MediaBrowserService` will own the player instance and its associated `MediaSession`.
-  Why also the`MediaSession`? Because you probably want the player to be controlled from other places as well,
-  even if your app's activity is destroyed. Otherwise, if the `MediaSession` lived within the activity,
-  then it would be destroyed when the activity is destroyed.This would imply that your player could only be controlled from external places (e.g. Google Assistant)
-when the activity was alive.
+Android offers a Service class precisely for music apps: the `MediaBrowserService`. This service will own:
+- The player: This way, the player can continue living/playing even if your app's activity is destroyed.
+- The `MediaSession` associated to the player. Why? Because you probably want the player to be controlled
+  from other places as well, even if your app's activity is destroyed. Otherwise,
+  if the `MediaSession` lived within the activity, then it would be destroyed when
+  the activity is destroyed. This would imply that your player could only be controlled
+  from external places (e.g. Google Assistant) when the activity was alive.
 
-The service is created when it is started in response to a media button or when an activity binds to it (after connecting via its MediaBrowser)
+To make your activity bind to the `MediaBrowserService`, you need a `MediaBrowser` instance. In particular, you need to:
+- Make your activity own a `MediaBrowser` instance.
+- Make the `MediaBrowser` instance connect to the `MediaBrowserService`. 
+- From the `MediaBrowserService`, allow the incoming connection to establish.
 
-A `MediaBrowserService` comes along with a `MediaBrowser`. 
-
-
-
-
-This design is implemented with a client-server architecture:
-
-- The server will be an Android service that will hold the player.
-    - Implemented as a subclass of `MediaBrowserService`.
-    - Will hold the `MediaSession` and the player.
-- The client is an Activity for the UI.
-    - Will hold a `MediaBrowser` that will connect to the `MediaBrowserService`.
-    - Will also hold the `MediaController`.
+When a `MediaBrowser` connects to the `MediaBrowserService`, it performs for you some internal boilerplate set-up for proper connection, and then binds the activity to the service.
 
 <figure>
   <img src="docs_images/client-service-architecture.png" alt="Client-server architecture for music apps">
   <figcaption>Figure 3. Client-server architecture for music apps</figcaption>
 </figure>
+
+At this point, the service is bound, but not started yet. If your UI activity disconnects at this point, the service is destroyed. This isn't a problem because you haven't played any music yet. However, when playback starts, the user probably expects to continue listening even after switching apps. You don't want to destroy the player when you unbind the UI to work with another app.
+
+For this reason, you need to ensure that the service is STARTED when it begins to play by calling `startService()`. A started service must be explicitly stopped, whether or not it's bound. This ensures that your player continues to perform even if the controlling UI activity unbinds.
 
 A `MediaBrowser` doesn't necessarily have to live in the same app/process as the `MediaBrowserService`. It will try to connect with a `MediaBrowserService`, and if the `MediaBrowserService` grants it permissions, the connection will be stablished.
 
