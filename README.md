@@ -18,35 +18,59 @@ I am going to guide you, step by step, through the whole process of creating
 this app from scratch. Every step is a commit in the repo's history. Please
 follow along the commits in the history section of this repo as you read.
 
-# Introduction 
+# The audio player and the architecture
 
-Broadly speaking, the approach of creating a music-playing app in Android can be
-divided into two subproblems:
-  - Creating the **audio player**: the audio player is the entity that's in
-    charge of rendering/decoding the audio media. A simple audio player, for
-    example, might have the ability to play audio files with extensions `.wav`
-    and `.mp3`. The audio player, as any software module, consists of two parts:
-      - Its API
-      - Its implementation
-  - Implement the **music-playing app architecture**: the architecture consists
-    of several elements, one of which is the audio player's API. Once these
-    elements are joined together, they make your app scalable, robust and
-    maintainable in the long term.
+When thinking about implementing a music-playing app, the most obvious component
+to think of is the audio player. The **audio player*** is the entity that's in
+charge of decoding/rendering/playing the audio media. A simple audio player, for
+example, might have the ability to play audio files with extensions `.wav` and
+`.mp3`.
 
-This approach lets us abstracts out the audio player implementation from the rest of the
-architectural elements. This gives us several advantages:
-  - It allows us to work in the audio player independently from the rest of the
-    architecture. We can even delegate the audio player to another person/team.
+However, in this documentation, we're not going to focus on implementing the
+audio player. We're going to assume that the audio player entity is already
+implemented and it's callable through a certain API that it exposes. This API
+will contain methods such as `play()`, `pause()`, `skipToNext()`, and will also
+issue event callbacks, such as `onSongFinished()`.
+
+With this assumption in mind, we're free to focus, and will exclusively focus,
+on the music-playing app **architecture**.
+
+The **architecture** is the organization of and connection between all the
+elements that the music app consists of. One of these elements is the audio
+player itself, but there are others as well, as we'll soon see. When all
+these elements are joined together, they make the app scalable, robust and
+maintainable in the long term. Not only that: you might be able to reuse some of
+these elements in other apps as well (up to a certain degree, depending on the
+requirements of our current app and of the other apps).
+
+From the architecture's point of view, we only need to know the audio player's
+API and how to call it. The audio player's implementation is abstracted from the
+architecture. This separation gives us several advantages:
+
+  - It allows us to work in the audio player implementation independently from
+    the architecture. We can even delegate the audio player to another person/team.
   - It allows us to assume the audio player is ready while we're working in the
-    architecture, because once the architecture is ready, it's very easy to plug
-    in the audio player to it.
+    architecture, because we have the app's architecture ready, it's very easy to
+    plug in the audio player to it.
   - If we want to change the audio player's implementation, we can change it
     independently from the rest of the app. We can even switch to a whole new
-    implementation, and this will be transparent to the rest of the app.
+    implementation, and this will be transparent to the rest of the app (as long
+    as the new implementation conforms to the same API).
+    
+In this guide, we will focus exclusively on the app's architecture, assuming the
+audio player already exists and conforms to some API. The API
 
-The architecture for such app consists of several elements connected together,
-and it's difficult to even start working on the app before having a good grasp of
-all these elements. In this guide, I'll introduce such architectural elements in
+## Splitting up the architecture
+
+Ok, so now that we are assuming the audio player exists and it's out of our way,
+can we start coding up the architecture? 
+
+Unfortunately, no. As said before, the architecture consists of several elements
+(besides the player's API). It's difficult to even start working on the app's
+code before having a good understanding of all these elements. We'll need to delay
+the code until I have explained all these elements. 
+
+In this guide, I'll introduce such architectural elements in
 an ordered, logical, and easy-to-follow way. Once we have enough knowledge of
 these elements, we'll understand the full architecture of the app, and then we
 can start working on the app's implementation.
