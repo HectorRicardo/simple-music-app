@@ -29,11 +29,29 @@ example, might have the ability to play audio files with extensions `.wav` and
 However, in this documentation, we're not going to focus on implementing the
 audio player. We're going to assume that the audio player entity is already
 implemented and it's callable through a certain API that it exposes. This API
-will contain methods such as `play()`, `pause()`, `skipToNext()`, and will also
+will look like this:
+
+```java
+public interface Player {
+  void play(Song song);
+  void play();
+  void pause();
+  void seekTo();
+}
+
+public interface PlayerCallbacks {
+  void onPlaybackStarted(long progress);
+  void onPaused(long progress);
+  void onSoughtTo(long progress, boolean playing);
+  void onSongChanged();
+  Song onFinished();
+}
+```
+contain methods such as `play()`, `pause()`, `skipToNext()`, and will also
 issue event callbacks, such as `onSongFinished()`.
 
-With this assumption in mind, we're free to focus, and will exclusively focus,
-on the music-playing app **architecture**.
+With this assumption in mind, we're free to focus, and will indeed exclusively
+focus, on the music-playing app **architecture**.
 
 The **architecture** is the organization of and connection between all the
 elements that the music app consists of. One of these elements is the audio
