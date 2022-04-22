@@ -18,79 +18,72 @@ I am going to guide you, step by step, through the whole process of creating
 this app from scratch. Every step is a commit in the repo's history. Please
 follow along the commits in the history section of this repo as you read.
 
-## Step 1: Start by adding a service.
+# Introduction 
 
-Let's start with a rather obvious aspect of mobile music players.
+The process of creating a music player app in Android is somewhat elaborate. The
+architecture for such app consists of several elements connected together, and
+it's difficult to even start working on the app before having a good grasp of
+all these elements. In this guide, I'll introduce such architectural elements in
+an ordered, logical, and easy-to-follow way. Once we have enough knowledge of
+these elements, we'll understand the full architecture of the app, and then we
+can start working on the app's implementation.
 
-Any decent mobile music-playing app has the capacity to keep playing while it's
-in the background. Think about Spotify, YouTube Music, etc.. When you play a
-song and minimize the app (or even lock the device), the song keeps playing in
-the background.
+Any decent music player app needs to fulfill three expectations:
+  - **Expectation 1**: The app's music player should be able to be controlled
+    not only from the app's UI itself, but also from other places, such as:
+      - the device's/peripherals' external hardware media buttons
+      - the notification bar/lock screen (the app must provide a notification
+        for the player)
+      - Google Assistant
+      - other devices/apps (see Expectation 3)
+  - **Expectation 2**: The app's player should be discoverable to companion
+    devices, such as Android Auto and Wear OS. Depending on your use case, your
+    app's player might also need to be discoverable by other apps.
+      - Once discovered, your app's player should be able to be controlled from
+        the discoverer entity, as per Expectation 2.
+  - **Expectation 3**: The app should keep playing in the background even if the
+    user minimizes it, switches to another app, or locks the screen.
 
-In Android, your app needs to use a *service* to achieve this. A service is an
-app component that has the ability to keep running in the background without
-needing a UI activity to be visible. If setup properly, the service's lifecycle
-will be independent of the activity's lifecycle. Your activity could have been
-stopped (if you switched to another app) or destroyed (if you pressed the Back
-button while on the activity), but your service may keep running.
+To meet these expectations, the Android music app architecture is split into two
+parts:
+  - The `MediaController`-`MediaSession` part: used to meet Expectation 1.
+  - The `MediaBrowser`-`MediaBrowserService` part: used to meet Expecations 2
+    and 3.
 
-There's a special Service class used in Android for music apps: the
-`MediaBrowserService`. So let's go ahead and create a class that inherits this
-class. Allow Android Studio to provide the default implementation for the
-class's necessary methods:
+I'm going to explain these two parts. Once explained, the Android music app
+architecture will fully make sense, and we will be able to connect these parts
+to implement our app.
 
+# Part 1: The `MediaController`-`MediaSession` part
 
+This first architectural part not only applies to the architecture of music
+apps, but also to the architecture of video apps. In other words, if you were to
+implement a video app, you would also need to implement this part, just as for
+music apps.
 
-A service remains alive as long as it's *bound*, *started*, or both bound and
-started:
-  - **Bound**: A bound service is one to which one or several Android
-    components (such as activities and other services, etc..) have bound. After
-    binding, these components are known as "clients".
-  - **Started**: A started service is one that was started by another component
-    via a `startService()` call.
+Let's start explaining this architectural part:
 
-When a service is created, it is initially created into one of these two states.
-You can't actually create a service directly. Instead, you do it indirectly by
-doing one of this:
-  - Bind a client to the service. The service will be created if it doesn't
-    exist yet, and it will be initially bound to the client.
-  - Start the service. Again, the service is created if doesn't exist yet. Its
-    initial state will be "Started".
-
-A bound service can then be started, and a started service can then be bound to one or many clients. You can stop a started service, and you can unbind a client from a bound service as often as you wish. But once the service happens to be both unbound and stopped, it is immediately destroyed. 
-
-![image](docs_images/service-lifecycle.png)
-
-
-
-The following section are notes that I took while reading the Android docs.
-
-
-An audio player does not always need to have its UI visible. Once it begins to play audio, 
-the player can run as a background task. The user can switch to another app or
-lock the device while continuing to listen.
-
-## General concepts: Media app overview
-
-These first sections talk about basic concepts that apply to all media apps. Media apps = both music apps and video apps.
-
-A decent media app is separated into two components:
-
-- A Player that renders the media (audio/video).
-- A UI that issues commands to the player (play, pause, etc..) and displays the player's state.
-  - Commands are represented as "Transport Controls" in the following diagram. 
+A decent media app (both music and video app) is separated into two components:
+  - A Player that renders the media (audio/video).
+  - A UI that issues commands to the player (play, pause, etc..) and displays
+    the player's state.
+      - Commands are represented as "Transport Controls" in the following
+        diagram. 
 
 <figure>
   <img alt="A basic media app diagram" src="docs_images/controller-session.png">
   <figcaption>Figure 1. Basic media app diagram</figcaption>
 </figure>
 
-A decent media app in Android completely separates and decouples these two parts. Why?
-Because by doing so, the Player is not condemned to be used exclusively from the app's UI.
-Instead, the Player can also be controlled from other places, such as:
-- external hardware media buttons
-- Google Assistant
-- notification bar/lock screen
+A decent media app in Android completely separates and decouples these two
+parts. Why? Because by doing so, the Player is not condemned to be used
+exclusively from the app's UI. Instead, the Player can also be controlled from
+other places, for example:
+  - external hardware media buttons
+  - Google Assistant
+  - notification bar/lock screen
+  - companion devices
+  - other apps
 
 Android provides two universal classes used to decouple these two media app components. Since these
 classes are universal, they allow a media app to integrate with any other Android app/component/mechanism
