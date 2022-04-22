@@ -1,12 +1,22 @@
 # Simple Music App
 
-Educational Android app that demonstrates how to implement a complete, fully fledged architecture for a small music player using the Android Media APIs.
+Educational Android app that demonstrates how to implement a complete, fully
+fledged architecture for a small music player using the Android Media APIs.
 
-The music player is silent: it's just a thread that sleeps for the duration of the song entity it was instructed to play. This is because I want the focus to be on the app's architecture.
+The music player is silent: it's just a thread that sleeps for the duration of
+the song entity it was instructed to play. This is because I want the focus to
+be on the app's architecture.
 
-This repository can be considered as a practical Android "Hello World" app for music players. It's much simpler than the [Universal Audio Media Player app](https://github.com/android/uamp) because it doesn't use ExoPlayer and it strictly follows only what is described in the Android docs (https://developer.android.com/guide/topics/media-apps/media-apps-overview). No bells and whistles.
+This repository can be considered as a practical Android "Hello World" app for
+music players. It's much simpler than the
+[Universal Audio Media Player app](https://github.com/android/uamp) because it
+doesn't use ExoPlayer and it strictly follows only what is described in the docs
+(https://developer.android.com/guide/topics/media-apps/media-apps-overview). No
+bells and whistles.
 
-I am going to guide you, step by step, through the whole process of creating this app from scratch. Every step is a commit in the repo's history. Please follow along the commits in the history section of this repo as you read.
+I am going to guide you, step by step, through the whole process of creating
+this app from scratch. Every step is a commit in the repo's history. Please
+follow along the commits in the history section of this repo as you read.
 
 ## Step 1: Start by adding a service.
 
@@ -19,24 +29,33 @@ the background.
 
 In Android, your app needs to use a *service* to achieve this. A service is an
 app component that has the ability to keep running in the background without
-needing a UI activity to be visible. The service's lifecycle is independent of
-the activity's lifecycle. Your activity could have been stopped (if you switched
-to another app) or destroyed (if you pressed the Back button while on the
-activity), but your service may keep running.
+needing a UI activity to be visible. If setup properly, the service's lifecycle
+will be independent of the activity's lifecycle. Your activity could have been
+stopped (if you switched to another app) or destroyed (if you pressed the Back
+button while on the activity), but your service may keep running.
 
-A service remains alive as long as it's *bound*, *started*, or both:
-- **Bound**: One or several Android component(s) (such as activities, other
-  services, etc..) are bound/linked to the service. After being bound, these
-  components are known as "clients".
-- **Started**: The service is in the STARTED state.
+There's a special Service class used in Android for music apps: the
+`MediaBrowserService`. So let's go ahead and create a class that inherits this
+class. Allow Android Studio to provide the default implementation for the
+class's necessary methods:
+
+
+
+A service remains alive as long as it's *bound*, *started*, or both bound and
+started:
+  - **Bound**: A bound service is one to which one or several Android
+    components (such as activities and other services, etc..) have bound. After
+    binding, these components are known as "clients".
+  - **Started**: A started service is one that was started by another component
+    via a `startService()` call.
 
 When a service is created, it is initially created into one of these two states.
 You can't actually create a service directly. Instead, you do it indirectly by
 doing one of this:
-- Bind a client to the service. The service will be created
-  if it doesn't exist yet, and it will be initially bound to the client.
-- Start the service. Again, the service is created if doesn't
-  exist yet. Its initial state will be "Started".
+  - Bind a client to the service. The service will be created if it doesn't
+    exist yet, and it will be initially bound to the client.
+  - Start the service. Again, the service is created if doesn't exist yet. Its
+    initial state will be "Started".
 
 A bound service can then be started, and a started service can then be bound to one or many clients. You can stop a started service, and you can unbind a client from a bound service as often as you wish. But once the service happens to be both unbound and stopped, it is immediately destroyed. 
 
@@ -142,7 +161,8 @@ update the UI according to the new state received.
 ## Design/Architecture of music apps
 
 From this section onwards, we'll talk specifically about music apps
-(no more talking about general media apps or video apps, unless explicitly mentioned).
+(no more talking about general media apps or video apps, unless
+explicitly mentioned).
 
 An audio player does not always need to have its UI visible. Once it begins to play audio, 
 the player can run as a background task. The user can switch to another app or
