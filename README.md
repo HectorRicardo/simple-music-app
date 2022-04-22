@@ -20,9 +20,32 @@ follow along the commits in the history section of this repo as you read.
 
 # Introduction 
 
-The process of creating a music player app in Android is somewhat elaborate. The
-architecture for such app consists of several elements connected together, and
-it's difficult to even start working on the app before having a good grasp of
+Broadly speaking, the approach of creating a music-playing app in Android can be
+divided into two subproblems:
+  - Creating the **audio player**: the audio player is the entity that's in
+    charge of rendering/decoding the audio media. A simple audio player, for
+    example, might have the ability to play audio files with extensions `.wav`
+    and `.mp3`. The audio player, as any software module, consists of two parts:
+      - Its API
+      - Its implementation
+  - Implement the **music-playing app architecture**: the architecture consists
+    of several elements, one of which is the audio player's API. Once these
+    elements are joined together, they make your app scalable, robust and
+    maintainable in the long term.
+
+This approach lets us abstracts out the audio player implementation from the rest of the
+architectural elements. This gives us several advantages:
+  - It allows us to work in the audio player independently from the rest of the
+    architecture. We can even delegate the audio player to another person/team.
+  - It allows us to assume the audio player is ready while we're working in the
+    architecture, because once the architecture is ready, it's very easy to plug
+    in the audio player to it.
+  - If we want to change the audio player's implementation, we can change it
+    independently from the rest of the app. We can even switch to a whole new
+    implementation, and this will be transparent to the rest of the app.
+
+The architecture for such app consists of several elements connected together,
+and it's difficult to even start working on the app before having a good grasp of
 all these elements. In this guide, I'll introduce such architectural elements in
 an ordered, logical, and easy-to-follow way. Once we have enough knowledge of
 these elements, we'll understand the full architecture of the app, and then we
