@@ -40,16 +40,16 @@ and work on the architecture. We only need to have knowledge of its API so we're
 able to call it. From the architecture's point of view, we only need to know how
 to call the player through its API so we can plug it in the right spots.
 
-A reasonable API for an audio player might contain methods such as `play()`,
-`pause()`, `skipToNext()`, and will also issue event callbacks, such as
-`onSongFinished()`.
-
 For the purposes of this documentation (which exclusively focuses on the music
-app architecture), we will assume that the audio player is already implemented
-and it exposes the API described above.
+app's architecture), we will assume that the audio player is already implemented
+and exposes some reasonable API. This API might contain methods such as `play()`,
+`pause()`, `skipToNext()`, and might also issue event callbacks such as
+`onSongFinished()`. We will be fleshing out the details of this API as we see fit
+throughout the course of this documentation.
 
 # The architecture
 
+Some guides 
 The **architecture** is the organization of and connection between all the
 elements that the music app consists of. One of these elements is the audio
 player itself, but there are others as well, as we'll soon see. When all
