@@ -33,17 +33,29 @@ will look like this:
 
 ```java
 public interface Player {
-  void play(Song song);
-  void play();
-  void pause();
-  void seekTo();
+  void play(Song song, OnPlaybackStartedCallback onPlaybackStartedCallback);
+  void play(OnPlaybackStartedCallback onPlaybackStartedCallback);
+  void pause(OnPausedCallback onPausedCallback);
+  void seekTo(long progress, OnSoughtToCallback onSoughtToCallback);
 }
 
-public interface PlayerCallbacks {
-  void onPlaybackStarted(long progress);
+@FunctionalInterface
+public interface OnPlaybackStartedCallback {
+  void onPlaybackStarted();
+}
+
+@FunctionalInterface
+public interface OnPausedCallback {
   void onPaused(long progress);
-  void onSoughtTo(long progress, boolean playing);
-  void onSongChanged();
+}
+
+@FunctionalInterface
+public interface OnSoughtToCallback {
+  void onSoughtTo(boolean playing);
+}
+
+@FunctionalInterface
+public interface OnSongFinishedCallback {
   Song onFinished();
 }
 ```
