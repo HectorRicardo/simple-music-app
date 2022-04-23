@@ -39,6 +39,18 @@ public interface Player {
   void seekTo(long progress, OnSoughtToCallback onSoughtToCallback);
 }
 
+public final class Song {
+  public final String title;
+  public final String artist;
+  public final long duration; // in milliseconds
+  
+  public Song(String title, String artist, long duration) {
+    this.title = title;
+    this.artist = artist;
+    this.duration = duration;
+  }
+}
+
 @FunctionalInterface
 public interface OnPlaybackStartedCallback {
   void onPlaybackStarted();
