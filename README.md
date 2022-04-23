@@ -21,14 +21,14 @@ follow along the commits in the history section of this repo as you read.
 # Introduction
 
 When thinking about implementing a music app, the most obvious component to
-think of is the audio player. The **audio player*** is the entity that's in
+think of is the audio player. The **audio player** is the entity that's in
 charge of decoding/rendering/playing the audio media. A simple audio player, for
 example, might have the ability to play audio files with extensions `.wav` and
 `.mp3`.
 
 However, in this documentation, we're not going to focus on implementing the
-audio player. Instead, we're going to focus on something in a higher level: the
-music app's **architecture**.
+audio player. Instead, we're going to focus on something more of a higher level:
+the music app's **architecture**, specifically for Android.
 
 The **architecture** is the overall design and structure of the app. It's the
 app's skeleton. In other words, it's the definition, abstraction, separation and
@@ -47,54 +47,45 @@ and exposes some reasonable API. This API might contain methods such as `play()`
 `onSongFinished()`. We will be fleshing out the details of this API as we see fit
 throughout the course of this documentation.
 
-# The architecture
+# Spliting up the architecture
 
-Some guides 
-The **architecture** is the organization of and connection between all the
-elements that the music app consists of. One of these elements is the audio
-player itself, but there are others as well, as we'll soon see. When all
-these elements are joined together, they make the app scalable, robust and
-maintainable in the long term. Not only that: you might be able to reuse some of
-these elements in other apps as well (up to a certain degree, depending on the
-requirements of our current app and of the other apps).
- 
-## Splitting up the architecture
+> Note before starting: some software development guides/tutorials normally
+introduce code samples/snippets as they present concepts for you to follow along
+and be working in your app's code as you read. Unfortunately, this isn't one of
+those guides. The Android music app architecture is somewhat elaborate, and it's
+difficult to even begin working on the app before having first a good
+understading of all the elements the architecture consists of. So instead, I'll
+first introduce these elements in an ordered, logical, and easy-to-follow way,
+and once we have a full understanding of them, we can start working on the app's
+implementation.
 
-Unfortunately, no. As said before, the architecture consists of several elements
-(besides the player's API). It's difficult to even start working on the app's
-code before having a good understanding of all these elements. We'll need to delay
-the code until I have explained all these elements. 
-
-In this guide, I'll introduce such architectural elements in
-an ordered, logical, and easy-to-follow way. Once we have enough knowledge of
-these elements, we'll understand the full architecture of the app, and then we
-can start working on the app's implementation.
-
-Any decent music player app needs to fulfill three expectations:
+To understand the rationale for Android's music app architecture, we first need
+to explicitly list out the expectations that a decent music-playing mobile app
+must fulfill:
   - **Expectation 1**: The app's music player should be able to be controlled
     not only from the app's UI itself, but also from other places, such as:
       - the device's/peripherals' external hardware media buttons
-      - the notification bar/lock screen (the app must provide a notification
+      - the notification bar/lock screen (your app should provide a notification
         for the player)
       - Google Assistant
-      - other devices/apps (see Expectation 3)
+      - other devices/apps (see Expectation 2)
   - **Expectation 2**: The app's player should be discoverable to companion
     devices, such as Android Auto and Wear OS. Depending on your use case, your
     app's player might also need to be discoverable by other apps.
       - Once discovered, your app's player should be able to be controlled from
-        the discoverer entity, as per Expectation 2.
+        the discoverer entity, as per Expectation 1.
   - **Expectation 3**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen.
-
+    
 To meet these expectations, the Android music app architecture is split into two
 parts:
   - The `MediaController`-`MediaSession` part: used to meet Expectation 1.
   - The `MediaBrowser`-`MediaBrowserService` part: used to meet Expecations 2
     and 3.
-
+    
 I'm going to explain these two parts. Once explained, the Android music app
-architecture will fully make sense, and we will be able to connect these parts
-to implement our app.
+architecture will fully make sense, and we will be able to start working on our
+app's code.
 
 # Part 1: The `MediaController`-`MediaSession` part
 
