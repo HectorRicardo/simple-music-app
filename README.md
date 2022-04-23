@@ -32,7 +32,7 @@ implemented and it's callable through a certain API that it exposes. This API
 will look like this:
 
 ```java
-public interface Player {
+public class Player {
   void play(Song song, OnPlaybackStartedCallback onPlaybackStartedCallback);
   void play(OnPlaybackStartedCallback onPlaybackStartedCallback);
   void pause(OnPausedCallback onPausedCallback);
@@ -66,6 +66,9 @@ public interface OnSoughtToCallback {
   void onSoughtTo(long progress, boolean playing);
 }
 
+/**
+ * 
+ */
 @FunctionalInterface
 public interface OnSongFinishedCallback {
   Song onFinished();
