@@ -51,7 +51,7 @@ public interface OnPausedCallback {
 
 @FunctionalInterface
 public interface OnSoughtToCallback {
-  void onSoughtTo(boolean playing);
+  void onSoughtTo(long progress, boolean playing);
 }
 
 @FunctionalInterface
