@@ -73,35 +73,42 @@ must fulfill:
     devices, such as Android Auto and Wear OS. Depending on your use case, your
     app's player might also need to be discoverable by other apps.
       - Once discovered, your app's player should be able to be controlled from
-        the discoverer entity, as per Expectation 1.
+        the discoverer entities, as per Expectation 1.
+      - Depending on your use case, you may also allow the discoverer entities to
+        access your app's music library (songs, playlists, albums, artists,
+        etc..).
   - **Expectation 3**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen.
     
 To meet these expectations, the Android music app architecture is split into two
-parts:
-  - The `MediaController`-`MediaSession` part: used to meet Expectation 1.
-  - The `MediaBrowser`-`MediaBrowserService` part: used to meet Expecations 2
-    and 3.
+"subarchitectures":
+  - The `MediaController`-`MediaSession` subarchitecture: used to meet
+    Expectation 1.
+  - The `MediaBrowser`-`MediaBrowserService` subarchitecture: used to meet
+    Expectations 2 and 3.
+
+These two subarchitectures are then joined together to form the complete
+music app architecture. 
     
-I'm going to explain these two parts. Once explained, the Android music app
-architecture will fully make sense, and we will be able to start working on our
-app's code.
+I'm going to explain these two subarchitectures. Once explained, the complete
+Android music app architecture will fully make sense, and we will be able to
+start working on our app's code.
 
-# Part 1: The `MediaController`-`MediaSession` part
+# The `MediaController`-`MediaSession` subarchitecture
 
-This first architectural part not only applies to the architecture of music
-apps, but also to the architecture of video apps. In other words, if you were to
-implement a video app, you would also need to implement this part, just as for
-music apps.
+This first subarchitecture not only applies to music apps, but also to video
+apps. In other words, if you were to implement a video app, you would also need
+to implement this subarchitecture.
 
-Let's start explaining this architectural part:
+Let's start explaining this subarchitecture
 
-A decent media app (both music and video app) is separated into two components:
+A decent media app (either a music or a video app) is separated into two
+components:
   - A Player that renders the media (audio/video).
   - A UI that issues commands to the player (play, pause, etc..) and displays
     the player's state.
-      - Commands are represented as "Transport Controls" in the following
-        diagram. 
+      - Command controls are represented as "Transport Controls" in the
+        following diagram. 
 
 <figure>
   <img alt="A basic media app diagram" src="docs_images/controller-session.png">
@@ -118,13 +125,17 @@ other places, for example:
   - companion devices
   - other apps
 
-Android provides two universal classes used to decouple these two media app components. Since these
-classes are universal, they allow a media app to integrate with any other Android app/component/mechanism
-smoothly and consistently.
+In the music app case, this is exactly our Expectation 1.
 
-The two classes are: 1) an instance of `MediaController`, which controls the UI, and 2) an instance of `MediaSession`, which manages the player:
+Android provides two universal classes used to decouple these two media app
+components. Since these classes are universal, they allow a media app to
+integrate with any other Android app/component/mechanism smoothly and
+consistently.
 
-- The `MediaController`:
+The two classes are: 1) an instance of `MediaController`, which controls the UI,
+and 2) an instance of `MediaSession`, which manages the player:
+
+  - The `MediaController`:
     - UI communicates exclusively with the `MediaController` (the UI never calls the player or the `MediaSession` directly).
     - Never calls the player directly: it calls the `MediaSession` instead.
     - Issues player commands to the `MediaSession`. Commands can be either:
@@ -132,7 +143,7 @@ The two classes are: 1) an instance of `MediaController`, which controls the UI,
         - Extensible custom commands, used to define special behaviors unique to your app.
     - Receives callbacks from the `MediaSession` informing about player state changes in order to update the UI.
         - These callbacks are also known as "Controller callbacks".
-- The `MediaSession`:
+  - The `MediaSession`:
     - Responsible for all communication with the player.
     - The player is only called from the `MediaSession`.
     - Receives command callbacks from the `MediaController`, and forwards these commands to the player.
