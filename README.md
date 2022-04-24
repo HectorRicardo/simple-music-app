@@ -27,18 +27,16 @@ audio player, for example, might have the ability to play audio files with
 extensions `.wav` and `.mp3`.
 
 However, in this documentation, we're not going to focus on implementing the
-audio player. Instead, we're going to focus on something more of a higher level:
-the music app's **architecture**, specifically for Android.
-
-The **architecture** is the overall design and structure of the app. It's the
-app's skeleton. In other words, it's the definition, abstraction, separation and
-organization of the components the app consists of, and the connection between
-them. The architecture defines the flow of logic in your app.
+audio player. Instead, we're going to do two things:
+  1. We're going to assume that the audio player entity is already implemented
+     and it's callable through a certain reasonable API that it exposes.
+  2. With this assumption in mind, we will focus on something more of a higher
+     level: the music app's **architecture**, specifically for Android.
 
 We don't need to know how the audio player is implemented to be able to define
 and work on the architecture. We only need to have knowledge of its API so we're
 able to call it. From the architecture's point of view, we only need to know how
-to call the player through its API so we can plug it in the right spots.
+to call the player's API so we can plug it in the right spots.
 
 For the purposes of this documentation (which exclusively focuses on the music
 app's architecture), we will assume that the player is already implemented and
@@ -53,15 +51,15 @@ API as we see fit throughout the course of this documentation.
 introduce code samples/snippets as they present concepts for you to follow along
 and be working in your app's code as you read. Unfortunately, this isn't one of
 those guides. The Android music app architecture is somewhat elaborate, and it's
-difficult to even begin working on the app before having first a good
+difficult to even begin working on the app's code before having first a good
 understading of all the elements the architecture consists of. So instead, I'll
 first introduce these elements in an ordered, logical, and easy-to-follow way,
 and once we have a full understanding of them, we can start working on the app's
 implementation.
 
-To understand the rationale for Android's music app architecture, we first need
-to explicitly list out the expectations that a decent music-playing mobile app
-must fulfill:
+To understand the Android music app architecture, we first need to explicitly
+list out the expectations that a decent Android music-playing app must fulfill:
+
   - **Expectation 1**: The app's music player should be able to be controlled
     not only from the app's UI itself, but also from other places, such as:
       - the device's/peripherals' external hardware media buttons
@@ -106,32 +104,33 @@ below for convenience.
 >   - Google Assistant
 >   - other devices/apps 
 
-In Android terminology, the places that are able to control the app's player
-(including the app's UI) are referred to as **media controllers** (or simply
-"controllers).
+In Android terminology, the "places" from which we should be able to control the
+app's player (including the app's UI) are referred to as **media controllers**
+(or simply "controllers").
 
 To achieve this goal, we need to abstract the player from the rest of the app.
-That is, we need to separate the player into a decoupled, standalone module that
-is callable from any of the Android media controllers.
+That is, we need to separate the player into a decoupled, standalone Android
+module that is callable from any of the Android media controllers.
 
-Hold on...didn't we do that already? Isn't one of the assumptions of this guide
-that the player is already abstracted, and we just care about its API?
+Hold on...didn't we do that already? Wasn't the initial assumption of this guide
+that the player is already implemented and abstracted, and we just care about
+its API?
 
-This is a good question. To answer it, we need to clarify that there are two
-different levels of abstractions:
+Good question. To answer it, we need to clarify that there are two different
+levels of abstractions:
 
-  - The **behavioral-level abstraction**: This is the one we already did (the
-    one we assumed it's already in place). This is simply abstracting out the
-    player's promised behavior and functionality (i.e. its API) from the way it
-    achieves that behavior and functionality (i.e, its implementation).
+  - The **behavioral-level abstraction**: This is the one we assumed it's
+    already in place. This is simply abstracting out the player's promised
+    behavior and functionality (i.e. its API) from the way it achieves that
+    behavior and functionality (i.e, its implementation).
     - Something to observe here: this abstraction ideally should be
       **platform-independent**. That is, the player ideally should expose the
       same behavior and functionality no matter if we're in Android, iOS,
-      Windows, etc..
+      Windows, Linux, etc..
     - However, the player's implementation can (and most likely will) be
       platform-dependent. The player will likely have to call into
       platform-specific frameworks and platform-specific APIs to get the audio
-      media rendered, depending on the platform it lives in. We just care that
+      media rendered, depending on the platform it lives in. We only care that
       the player's API is platform-independent.
     - Once you achieve this level of abstraction, your player will be callable
       as an independent entity from anywhere *within your app*, but not from
@@ -140,13 +139,13 @@ different levels of abstractions:
     interested in this section. It's an Android-specific abstraction. We need
     to "wrap" the player in a Android-specific standalone media-player-module
     so that it's callable from the Android-specific media controllers.
-    - Since the media controllers can live in different apps/processes than the
-      player, the controller-player communication might need to be handled
+    - Since some of the media controllers live in different apps/processes than
+      the player, the controller-player communication might need to be handled
       externally by the OS, rather than by your app.
-    - Thus, the OS needs to be able to identify your player as a standalone
-      media-player-module. 
-    - The way your player becomes an Android standalone media-player-module is
-      by adhering to a certain API.
+    - Thus, the OS needs to be able to identify your player as a standalone,
+      callable media-player-module.
+    - The way your player becomes an Android standalone, callable
+      media-player-module to the OS's eyes is by adhering to a certain API.
     - This API is definitely different from the API we discussed in the previous
       bullet (since this an Android-specific API).
 
@@ -157,31 +156,8 @@ achieving the Android-level abstraction.
 > Android-level abstraction without the behavioral-level one. But that's a very
 > bad practice, and I'm not going to explain that here.
 
-As said, we're going to focus on the Android-level abstaction
-
-A decent music app is separated into two components: the **audio player**
-(which we already explained in the introduction) and the **UI**.
-  - The UI issues commands to the player (play, pause, etc..) and
-    displays the player's state. Player commands are also known as **transport
-    commands**, and this is the term Android prefers for this purpose.
-  - The player responds to these commands and send updates back to the UI so
-    the user can see the new 
-
-A decent music app in Android completely separates and decouples these two
-parts. Why? Because by doing so, the player is not condemned to be used
-exclusively from the app's UI. Instead, the player can also be controlled from
-other places, for example:
-
-  - external hardware media buttons
-  - Google Assistant
-  - notification bar/lock screen
-  - companion devices
-  - other apps
-
-These places are also known as **media controllers**, or simply "controllers".
-(the UI of the player's app is also a media controller itself).
-
-This is exactly the Expectation 1 we outlined above. 
+To achieve the Android-level abstraction, Android provides us with some
+universal classes for both the player and the media controllers.
 
 To allow for a decoupled and bidirectional communication between a player and
 its media controllers, Android provides two universal classes:
