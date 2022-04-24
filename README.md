@@ -41,11 +41,11 @@ able to call it. From the architecture's point of view, we only need to know how
 to call the player through its API so we can plug it in the right spots.
 
 For the purposes of this documentation (which exclusively focuses on the music
-app's architecture), we will assume that the audio player is already implemented
-and exposes some reasonable API. This API might contain methods such as `play()`,
+app's architecture), we will assume that the player is already implemented and
+exposes some reasonable API. This API might contain methods such as `play()`,
 `pause()`, `skipToNext()`, and might also issue event callbacks such as
-`onSongFinished()`. We will be fleshing out the details of this API as we see fit
-throughout the course of this documentation.
+`onSongFinished()`. We will be fleshing out the details of the audio player's
+API as we see fit throughout the course of this documentation.
 
 # Spliting up the architecture
 
@@ -81,43 +81,35 @@ must fulfill:
     user minimizes it, switches to another app, or locks the screen.
     
 To meet these expectations, the Android music app architecture is split into two
-"subarchitectures":
-  - The `MediaController`-`MediaSession` subarchitecture: used to meet
-    Expectation 1.
-  - The `MediaBrowser`-`MediaBrowserService` subarchitecture: used to meet
-    Expectations 2 and 3.
+parts:
+  - The `MediaController`-`MediaSession` part: used to meet Expectation 1.
+  - The `MediaBrowser`-`MediaBrowserService` part: used to meet Expectations 2
+    and 3.
 
-These two subarchitectures are then joined together to form the complete
-music app architecture. 
+These two part are then combined together to form the complete music app
+architecture. 
     
-I'm going to explain these two subarchitectures. Once explained, the complete
+I'm going to explain these two parts. Once I'm done explaining them, the
 Android music app architecture will fully make sense, and we will be able to
 start working on our app's code.
 
-# The `MediaController`-`MediaSession` subarchitecture
+# The `MediaController`-`MediaSession` part
 
-This first subarchitecture not only applies to music apps, but also to video
-apps. In other words, if you were to implement a video app, you would also need
-to implement this subarchitecture.
+A decent music app is separated into two components:
 
-Let's start explaining this subarchitecture
-
-A decent media app (either a music or a video app) is separated into two
-components:
-  - A Player that renders the media (audio/video).
-  - A UI that issues commands to the player (play, pause, etc..) and displays
-    the player's state.
-      - Command controls are represented as "Transport Controls" in the
-        following diagram. 
+  - The audio player (which we already explained in the introduction).
+  - The **UI**, which issues commands to the player (play, pause, etc..) and
+    displays the player's state. Player commands are also known as "transport
+    commands", and this is the term Android prefers for this purpose.
 
 <figure>
   <img alt="A basic media app diagram" src="docs_images/controller-session.png">
   <figcaption>Figure 1. Basic media app diagram</figcaption>
 </figure>
 
-A decent media app in Android completely separates and decouples these two
-parts. Why? Because by doing so, the Player is not condemned to be used
-exclusively from the app's UI. Instead, the Player can also be controlled from
+A decent music app in Android completely separates and decouples these two
+parts. Why? Because by doing so, the player is not condemned to be used
+exclusively from the app's UI. Instead, the player can also be controlled from
 other places, for example:
   - external hardware media buttons
   - Google Assistant
@@ -125,35 +117,75 @@ other places, for example:
   - companion devices
   - other apps
 
-In the music app case, this is exactly our Expectation 1.
+This is exactly the Expectation 1 we outlined above.
 
-Android provides two universal classes used to decouple these two media app
-components. Since these classes are universal, they allow a media app to
-integrate with any other Android app/component/mechanism smoothly and
-consistently.
+Android provides several universal classes to decouple the player from the UI.
+Since these classes are universal, they allow a music app's player to integrate 
+smoothly and consistently with any other Android app/component/mechanism that
+also uses/expects the use of these classes.
 
-The two classes are: 1) an instance of `MediaController`, which controls the UI,
-and 2) an instance of `MediaSession`, which manages the player:
+Two of these classes are `MediaController` and `MediaSession`. I'm going to
+explain how the UI would end up communicating with the player using these
+classes. For the sake of the explanation, assume that the user pressed a "Play"
+button in the app to start the music playback.
 
-  - The `MediaController`:
-    - UI communicates exclusively with the `MediaController` (the UI never calls the player or the `MediaSession` directly).
-    - Never calls the player directly: it calls the `MediaSession` instead.
-    - Issues player commands to the `MediaSession`. Commands can be either:
-        - Built-in, common commands, such as play, pause, stop, and seek.
-        - Extensible custom commands, used to define special behaviors unique to your app.
-    - Receives callbacks from the `MediaSession` informing about player state changes in order to update the UI.
-        - These callbacks are also known as "Controller callbacks".
-  - The `MediaSession`:
-    - Responsible for all communication with the player.
-    - The player is only called from the `MediaSession`.
-    - Receives command callbacks from the `MediaController`, and forwards these commands to the player.
-        - Command callbacks are also known as "Session callbacks".
-    - When the player updates its state, sends a controller callback to the `MediaController` notifying about this update.
- 
+  1. The button's listener calls the `MediaController`.
+  2. The `MediaController` calls the `MediaSession`, forwarding the transport
+     command sent.
+  3. The `MediaSession` forwards the same command to the player.
+  4. The player finally receives the command, and it acts upon it.
+
+Assume that the player does some preparation before actually starting the
+playback (for example, it might retrieve the audio from the web). Once it
+actually begins playback, it needs to inform this to the UI. This is how it will
+communicate back to the UI (communication flow is now backwards with respect to
+the previous numbered list):
+
+  1. The Player calls the `MediaSession`, saying that the `onPlaybackStarted`
+     event just triggered.
+  2. The `MediaSession` communicates back to the `MediaController`, informing of
+     the event.
+  3. The `MediaController` calls updates the UI state to display that the player
+     is now in the "PLAYING" state (or something similar).
+
 <figure>
-  <img src="docs_images/media-app-with-android-classes.png" alt="Media app diagram with Android classe">
-  <figcaption>Figure 2. Media app diagram with Android classes</figcaption>
+  <img src="docs_images/media-app-with-android-classes.png"
+       alt="Media app diagram with Android classes">
+  <figcaption>
+    Figure 2. Media app diagram with Android classes
+  </figcaption>
 </figure>
+
+The communication flow is always like this, in both directions. There's no
+bypassing at all. That is:
+
+  - The UI elements only call the `MediaController`. They never call directly
+    the `MediaSession` or the player.
+  - The `MediaController` only calls the `MediaSession`, and never the player.
+  - The `MediaSession` only calls the `Player` and the `MediaController`. It's
+    never in charge of updating the UI.
+  - The `Player` only calls the `MediaSession`, and never the `MediaController`
+    or the UI.
+
+  - About the `MediaController`:
+      - The UI communicates exclusively with the `MediaController` (the UI never
+        calls the player or the `MediaSession` directly).
+      - The `MediaController` never calls the player directly: it calls the
+        `MediaSession` instead.
+      - The `MediaController` issues player commands to the `MediaSession`. Commands can be either:
+          - Built-in, common commands, such as play, pause, stop, and seek.
+          - Extensible custom commands, used to define special behaviors unique
+            to your app.
+      - It receives callbacks from the `MediaSession` informing about player state changes in order to update the UI.
+        - These callbacks are also known as "Controller callbacks".
+  - About the `MediaSession`:
+    - It's responsible for all communication with the player.
+    - The player is only called from the `MediaSession`.
+    - It receives command callbacks from the `MediaController`, and forwards
+      these commands to the player.
+         - Command callbacks are also known as "Session callbacks".
+    - When the player updates its state, sends a controller callback to the `MediaController` notifying about this update.
+
 
 A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
 with one or more `MediaController`s simultaneously. This allows your player to be
