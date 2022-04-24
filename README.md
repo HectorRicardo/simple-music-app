@@ -21,10 +21,10 @@ follow along the commits in the history section of this repo as you read.
 # Introduction
 
 When thinking about implementing a music app, the most obvious component to
-think of is the audio player. The **audio player** is the entity that's in
-charge of decoding/rendering/playing the audio media. A simple audio player, for
-example, might have the ability to play audio files with extensions `.wav` and
-`.mp3`.
+think of is the audio player. The **audio player** (or simply "player") is the
+entity that's in charge of decoding/rendering/playing the audio media. A simple
+audio player, for example, might have the ability to play audio files with
+extensions `.wav` and `.mp3`.
 
 However, in this documentation, we're not going to focus on implementing the
 audio player. Instead, we're going to focus on something more of a higher level:
@@ -95,12 +95,49 @@ start working on our app's code.
 
 # The `MediaController`-`MediaSession` part
 
-A decent music app is separated into two components:
+This architectural part is used to fulfill Expectation 1, which is repeated
+below for convenience.
 
-  - The audio player (which we already explained in the introduction).
-  - The **UI**, which issues commands to the player (play, pause, etc..) and
-    displays the player's state. Player commands are also known as "transport
-    commands", and this is the term Android prefers for this purpose.
+> **Expectation 1**: The app's music player should be able to be controlled not
+> only from the app's UI itself, but also from other places, such as:
+>   - the device's/peripherals' external hardware media buttons
+>   - the notification bar/lock screen (your app should provide a notification
+>     for the player)
+>   - Google Assistant
+>   - other devices/apps 
+
+In Android terminology, the places that are able to control the app's player
+(including the app's UI) are referred to as **media controllers**.
+
+To achieve this goal, we need to abstract the player from the rest of the app.
+That is, we need to separate the player into a decoupled, standalone element that
+is callable from any of the Android media controllers.
+
+Hold on...didn't we do that already? Isn't one of the assumptions of this guide
+that the player is already abstracted, and we just care about its API?
+
+This is a good question. To answer it, we need to clarify that there are two
+different levels of abstractions:
+
+  - First-level abstraction: This is the one we already did (the one we assumed
+    it's already in place). However, this abstraction should be
+    platform-independent. That is, the API should be the same, no matter if
+    we're doing an Android, iOS, or Windows application. A player is a player
+    and should behave as a player, no matter in which platform we are.
+      - Note: the player's API has to be platform-independent, but its
+        implementation doesn't have to be. 
+  - The "Android" level abstraction: Now that the first-level abstraction is in
+    place, we need to "wrap" our player in an Android-specific module so it's
+    callable from the Android media controllers. The player has to be reachable
+    from the Android framework, 
+
+A decent music app is separated into two components: the **audio player**
+(which we already explained in the introduction) and the **UI**.
+  - The UI issues commands to the player (play, pause, etc..) and
+    displays the player's state. Player commands are also known as **transport
+    commands**, and this is the term Android prefers for this purpose.
+  - The player responds to these commands and send updates back to the UI so
+    the user can see the new 
 
 <figure>
   <img alt="A basic media app diagram" src="docs_images/controller-session.png">
@@ -111,18 +148,37 @@ A decent music app in Android completely separates and decouples these two
 parts. Why? Because by doing so, the player is not condemned to be used
 exclusively from the app's UI. Instead, the player can also be controlled from
 other places, for example:
+
   - external hardware media buttons
   - Google Assistant
   - notification bar/lock screen
   - companion devices
   - other apps
 
-This is exactly the Expectation 1 we outlined above.
+These places are also known as **media controllers**, or simply "controllers".
+(the UI of the player's app is also a media controller itself).
 
-Android provides several universal classes to decouple the player from the UI.
-Since these classes are universal, they allow a music app's player to integrate 
-smoothly and consistently with any other Android app/component/mechanism that
-also uses/expects the use of these classes.
+This is exactly the Expectation 1 we outlined above. 
+
+To allow for a decoupled and bidirectional communication between a player and
+its media controllers, Android provides two universal classes:
+  - An instance of `MediaController`, which encapsulates a single media
+    controller.
+  - an instance of `MediaSession`, which encapsulates the player. 
+    
+Any controller that wants to communicate with an app's player
+    needs a `MediaController`. Any player
+    that wants to be controlled from other controllers must be associated to
+    a `MediaSession`.
+
+Using these classes, the controllers never have to communicate with player
+directly, and conversely the player never has to directly communicate with
+controllers. Instead:
+
+  - The controllers communicates bidirectionally with its associated
+    `MediaController`.
+  - The `MediaController` communicates bidirectionally with the `MediaSession`.
+  - The `MediaSession` communicates bidirectionally with the player.
 
 Two of these classes are `MediaController` and `MediaSession`. I'm going to
 explain how the UI would end up communicating with the player using these
@@ -156,17 +212,19 @@ the previous numbered list):
   </figcaption>
 </figure>
 
-The communication flow is always like this, in both directions. There's no
-bypassing at all. That is:
+The communication flow between UI and player is always like this, in both
+directions. There's no bypassing at all. That is:
 
   - The UI elements only call the `MediaController`. They never call directly
     the `MediaSession` or the player.
-  - The `MediaController` only calls the `MediaSession`, and never the player.
+  - The `MediaController` only updates the UI and calls the `MediaSession`.
+    It never calls the player directly.
   - The `MediaSession` only calls the `Player` and the `MediaController`. It's
     never in charge of updating the UI.
   - The `Player` only calls the `MediaSession`, and never the `MediaController`
     or the UI.
 
+SASSA
   - About the `MediaController`:
       - The UI communicates exclusively with the `MediaController` (the UI never
         calls the player or the `MediaSession` directly).
