@@ -133,19 +133,17 @@ different levels of abstractions:
       platform-specific frameworks and platform-specific APIs to get the audio
       media rendered, depending on the platform it lives in. We just care that
       the player's API is platform-independent.
-  - The **Android-level** abstraction: We need to "wrap" our player in an
+  - The **Android-level** abstraction: This is the abstraction that we're
+    interested in this section. We need to "wrap" our player in an
     Android-specific media-player-module so it's callable from the Android media
     controllers. Since the media controllers can live in different
-    apps/processes than the player, the controller-player communication will
-    happen outside the player's app, through the Android OS (and in fact,
-    the communication will ALWAYS happen through the OS, even if the controller
-    lives in the same app of the player, that is, if the controller in question
-    is the player app's UI). The OS has to identify the player as an
-    Android-specific media-player-module so it can allow the media controllers
-    to communicate with the player. Android OS expects media-player-modules to
-    conform to a certain API, and this API is definitely different from the API
-    we talked about in the previous bullet (since this API is for
-    Android-specific purposes).
+    apps/processes than the player, the controller-player communication might
+    need to be handled by the OS, rather than by your app. Thus, the OS has to
+    identify the player as an Android-specific media-player-module so it can
+    allow the media controllers to communicate with the player. Android OS
+    expects media-player-modules to conform to a certain API, and this API is
+    definitely different from the API we talked about in the previous bullet
+    (since this API is for Android-specific purposes).
 
 A decent music app is separated into two components: the **audio player**
 (which we already explained in the introduction) and the **UI**.
