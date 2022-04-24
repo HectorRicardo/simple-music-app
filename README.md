@@ -133,19 +133,31 @@ different levels of abstractions:
       platform-specific frameworks and platform-specific APIs to get the audio
       media rendered, depending on the platform it lives in. We just care that
       the player's API is platform-independent.
+    - Once you achieve this level of abstraction, your player will be callable
+      as an independent entity from anywhere *within your app*, but not from
+      outside it.
   - The **Android-level abstraction**: This is the abstraction that we're
-    interested in this section. We need to separate the audio player from the
-    rest of the app and "wrap" it in a Android-specific standalone
-    media-player-module so that it's callable from the Android media
-    controllers. Since the media controllers can live in different 
-    apps/processes than the player, the controller-player communication might
-    need to be handled by the OS, rather than by your app. Thus, the OS needs to
-    be able to identify your player as an Android-specific standalone
-    media-player-module. And the way your player becomes identifiable to the OS
-    be identifiable by the OS, a media-player-module must conform to a certain API.
-    This API is definitely
-    different from the API we talked about in the previous bullet (since this API
-    is for Android-specific purposes).
+    interested in this section. It's an Android-specific abstraction. We need
+    to "wrap" the player in a Android-specific standalone media-player-module
+    so that it's callable from the Android-specific media controllers.
+    - Since the media controllers can live in different apps/processes than the
+      player, the controller-player communication might need to be handled
+      externally by the OS, rather than by your app.
+    - Thus, the OS needs to be able to identify your player as a standalone
+      media-player-module. 
+    - The way your player becomes an Android standalone media-player-module is
+      by adhering to a certain API.
+    - This API is definitely different from the API we discussed in the previous
+      bullet (since this an Android-specific API).
+
+You first achieve the behavioral-level abstraction, and then you work towards
+achieving the Android-level abstraction.
+
+> NOTE: Strictly speaking, it's technically possible to achieve the
+> Android-level abstraction without the behavioral-level one. But that's a very
+> bad practice, and I'm not going to explain that here.
+
+As said, we're going to focus on the Android-level abstaction
 
 A decent music app is separated into two components: the **audio player**
 (which we already explained in the introduction) and the **UI**.
@@ -154,11 +166,6 @@ A decent music app is separated into two components: the **audio player**
     commands**, and this is the term Android prefers for this purpose.
   - The player responds to these commands and send updates back to the UI so
     the user can see the new 
-
-<figure>
-  <img alt="A basic media app diagram" src="docs_images/controller-session.png">
-  <figcaption>Figure 1. Basic media app diagram</figcaption>
-</figure>
 
 A decent music app in Android completely separates and decouples these two
 parts. Why? Because by doing so, the player is not condemned to be used
