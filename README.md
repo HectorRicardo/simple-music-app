@@ -144,8 +144,8 @@ levels of abstractions:
       externally by the OS, rather than by your app.
     - Thus, the OS needs to be able to identify your player as a standalone,
       callable media-player-module.
-    - The way your player becomes an Android standalone, callable
-      media-player-module to the OS's eyes is by adhering to a certain API.
+    - The way your player gets to be identified as such is by adhering to a
+      certain API.
     - This API is definitely different from the API we discussed in the previous
       bullet (since this an Android-specific API).
 
