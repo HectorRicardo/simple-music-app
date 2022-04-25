@@ -137,17 +137,18 @@ levels of abstractions:
       outside it.
   - The **Android-level abstraction**: This is the abstraction that we're
     interested in this section. It's an Android-specific abstraction. We need
-    to "wrap" the player in a Android-specific standalone media-player-module
+    to isolate the player in a Android-specific standalone media-player-module
     so that it's callable from the Android-specific media controllers.
     - Since some of the media controllers live in different apps/processes than
       the player, the controller-player communication might need to be handled
       externally by the OS, rather than by your app.
     - Thus, the OS needs to be able to identify your player as a standalone,
       callable media-player-module.
-    - The way your player gets to be identified as such is by adhering to a
-      certain API.
-    - This API is definitely different from the API we discussed in the previous
-      bullet (since this an Android-specific API).
+    - Thus, we need to abstract the player such that it is identified as such
+      by the OS.
+    - Once we achieve this abstraction, the player will be callable from the
+      media controllers, whether they're *internal* to your app or *external*
+      to it.
 
 You first achieve the behavioral-level abstraction, and then you work towards
 achieving the Android-level abstraction.
