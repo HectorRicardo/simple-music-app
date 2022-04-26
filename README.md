@@ -162,10 +162,15 @@ To achieve the Android-level abstraction, Android provides us two classes:
     controller.
   - an instance of `MediaSession`, which encapsulates the player.
 
-Using these classes, the media controllers don't communicate directly with the
-player, and conversely, the player doesn't communicate directly with the media
-controllers. Instead, the communication flows according to this diagram (note
-that the double-pointed arrows indicate bidirectional communication):
+You need to wrap your player in a `MediaSession`. Conversely, you also need to
+instantiate a `MediaController` and make your UI exclusively communicate to it.
+This way, your UI will follow the same pattern as the rest of the controllers.
+
+Using this `MediaController`-`MediaSession` pattern, the media controllers don't
+communicate directly with the player, and conversely, the player doesn't
+communicate directly with the media controllers. Instead, the communication
+flows according to this diagram (note that the double-pointed arrows indicate
+bidirectional communication):
 
 <figure>
   <img src="docs_images/controller-session-connections.svg"
@@ -211,39 +216,94 @@ Something to add: coloquially speaking, we often make these adjustments to our
 language:
   - We often refer to a controller and its associated `MediaController`
     instance as simply "media controller".
-  - We often refer to a player and its associated `MediaSession` instance as
-    simply "media session".
+  - We often simply use the term "media session" to refer to either:
+      - the player and its associated `MediaSession` instance
+      - or simply the `MediaSession` instance.
 
 Since these are abstractions, we don't need to strictly distinguish a
 controller from its associated `MediaController`, or a player from its
-associated `MediaSession`. We just refer them as a whole by "media session"
-or "media controller". 
+associated `MediaSession`. We just refer them as a whole by "media controller"
+or "media session". 
 
-From this point onwards, we will be adopting these colloquial ways of
-speech.
+From this point onwards, we will be adopting these colloquial ways of speech.
 
 # The `MediaBrowser`-`MediaBrowserService` part
 
 The `MediaController` and `MediaSession` classes make your player controllable
 from various controllers... but how do these controllers find out about the
-existence of your player in the first place?
+existence of your player (or rather, of your media session) in the first place?
 
 This is where the `MediaBrowser` and the `MediaBrowserService` classes come into
-play. They make your player discoverable.
+play. They make your player's media session *discoverable*.
 
-To be fair, some `MediaController`s are able to discover your player without
-needing the help of these classes (although they might need other setup to be
-able to work... we will cover these later). Such `MediaController`s are:
-  - Your app's UI: This is obvious, because the player's `MediaSession` lives
-    in your own app... there's nothing to discover.
+To be fair, some media controllers are able to discover your media session
+without needing these classes (although they might need other setup to be able
+to work... we will cover such setup later). Such media controllers are:
+  - Your app's UI: This is obvious, because the media session lives in your own
+    same app, so there's nothing to discover.
   - Your player's notification: The notification's button listeners are defined
-    in your app, and you can call the `MediaSession` directly.
+    in your app, and you can call the media session directly from them.
   - The Google Assistant
   - The external hardware media buttons
 
-But the media controllers living in other apps, Android Auto, and Wear OS cannot
-find your player on their own (strictly speaking, they cannot find your player's
-`MediaSession` on their own).
+But media controllers living in:
+  - other apps
+  - Android Auto
+  - Wear OS
+cannot find your media session on their own. These media controllers need help
+from the `MediaBrowser` and `MediaBrowserService` classes.
+
+In addition, you might want browse what media content (ex. songs) your app
+offers, and you might want to do such browsing from outside your app (for
+example, from Android Auto). A media controller can only control your player:
+it cannot know what content is available for playback. You need *browsing*
+capabilities, and these capabilities are offered through the `MediaBrowser` and
+`MediaBrowserService` classes.
+
+Finally, your app should have the capacity to keep playing while it's
+in the *background*. Once it begins to play audio, the player should run as a
+background task, and the user should be able to switch to another app, minimize
+your app, or even lock the device, and still continue to listen. In Android, the
+ability to perform background work is done through **services**, and the
+`MediaBrowserService` class is precisely a service used for music player apps to
+give them such background playback feature.
+
+So to summarize, the `MediaBrowser` and `MediaBrowserService` classes bring in
+three pieces of crucial functionality to your app:
+  - They make your player's media session *discoverable* to external
+    media controllers.
+  - They allow *browsing* your app's content library from outside your app's
+    UI.
+      - Clients that are able to browse the content library are called *media
+        browsers*
+  - The `MediaBrowserService` allows your app to keep playing while its UI is
+    in the background (not visible to the user).
+    
+In order to implement the `MediaBrowser`-`MediaBrowserService` pattern in your app,
+these are the overall steps you have to take (don't worry, we'll dive into the
+details later):
+  1. Wrap your media controller (for example, your app's UI media controller)
+     inside a `MediaBrowser`.
+  2. Wrap your media session (which already wraps your player) inside a
+     `MediaBrowserService`. 
+  3. Setup your `MediaBrowserService` so it allows incoming connections from your
+     `MediaBrowser` (and from other `MediaBrowser`s you wish to allow access to).
+       - You can set connection permissions to your `MediaBrowserService` on a
+         `MediaBrowser`-per-`MediaBrowser` basis. We'll see later how to do this.
+       - For the `MediaBrowser`s that you did gave access permissions, you can
+         define how much of the app's media library they will be able to browse.
+         Again, we'll see the details of this later on.
+  4. Connect your `MediaBrowser` to your `MediaBrowserService`.
+  5. After connection succeeds, now make your media controller connect to your
+     media session.
+     
+If you're observant, you might be asking this question: "But on Step 4, how will the
+`MediaBrowser`s *themselves* discover the `MediaBrowserService`? It's cyclical!".
+
+The answer is that you just need to provide them with the `MediaBrowserService`
+fully qualified class name. You also need to do some additional setup (which we'll
+cover later), but the fully qualified class name is enough for discoverability
+purposes.
 
 ## Player State
 
@@ -285,10 +345,6 @@ update the UI according to the new state received.
 From this section onwards, we'll talk specifically about music apps
 (no more talking about general media apps or video apps, unless
 explicitly mentioned).
-
-An audio player does not always need to have its UI visible. Once it begins to play audio, 
-the player can run as a background task. The user can switch to another app or
-lock the device while continuing to listen.
 
 To achieve this, the audio player must live within an Android service.
 An Android service is a long-lived Android component that can run in the
