@@ -302,8 +302,8 @@ If you're observant, you might be asking this question: "But on Step 4, how will
 
 The answer is that you just need to provide them with the `MediaBrowserService`
 fully qualified class name. You also need to do some additional setup (which we'll
-cover later), but the fully qualified class name is enough for discoverability
-purposes.
+cover later), but for discoverability purposes, the fully qualified class name is
+enough.
 
 ## Player State
 
