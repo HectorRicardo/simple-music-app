@@ -61,7 +61,7 @@ To understand the Android music app architecture, we first need to explicitly
 list out the expectations that a decent Android music-playing app must fulfill:
 
   - **Expectation 1**: The app's music player should be controllable not only
-    from the app's UI itself, but also from other places, such as:
+    from the app's UI, but also from other places, such as:
       - the device's/peripherals' external hardware media buttons
       - the notification bar/lock screen (your app should provide a notification
         for the player)
@@ -96,8 +96,8 @@ start working on our app's code.
 This architectural part is used to fulfill Expectation 1, which I repeat here
 below for convenience:
 
-> The app's music player should be controllable not only from the app's UI
-> itself, but also from other places, such as:
+> The app's music player should be controllable not only from the app's UI,
+> but also from other places, such as:
 >  - the device's/peripherals' external hardware media buttons
 >  - the notification bar/lock screen (your app should provide a notification
 >    for the player)
@@ -163,24 +163,9 @@ To achieve the Android-level abstraction, Android provides us two classes:
   - an instance of `MediaSession`, which encapsulates the player.
 
 Using these classes, the media controllers don't communicate directly with the
-player. Instead:
-
-  1. Each controller sends *transport commands* (pause, play, etc..) to its
-     respective `MediaController` instance.
-  3. The `MediaController`s call the desired player's `MediaSession`,
-     forwarding the transport commands sent.
-  3. The `MediaSession` forwards the same commands to the player.
-  4. The player finally receives the commands, and it acts upon them.
-
-Conversely, with these classes, the player doesn't communicate with the
-controllers directly. Instead:
-
-  1. A player calls the `MediaSession`, informing that an event of interest
-     has happened (for example, the `onPlaybackStarted` event).
-  2. The `MediaSession` propagates the event to all the `MediaController`s
-     connected to it.
-  3. The `MediaController`s receive the event and act upon it (for example, by
-     updating a UI).
+player, and conversely, the player doesn't communicate directly with the media
+controllers. Instead, the communication flows according to this diagram (note
+that the double-pointed arrows indicate bidirectional communication):
 
 <figure>
   <img src="docs_images/controller-session-connections.svg"
@@ -189,30 +174,16 @@ controllers directly. Instead:
     Figure 2. Media app diagram with Android classes
   </figcaption>
 </figure>
+
+There's no by
     
-By "universal", this means that any controller encapsulated by a `MediaController`
-can connect to any player encapsulated by a `MediaSession`. An author can create
-a controller and wrap it around a `MediaController`, and a completely different
-author can create a player and wrap it around a player, and Android can guarantee
-that these two entities will be able to communicate between them, without the
-authors having to know about the e.
-
-Two of these classes are `MediaController` and `MediaSession`. I'm going to
-explain how the UI would end up communicating with the player using these
-classes. For the sake of the explanation, assume that the user pressed a "Play"
-button in the app to start the music playback.
-
-The communication flow between UI and player is always like this, in both
-directions. There's no bypassing at all. That is:
-
-  - The UI elements only call the `MediaController`. They never call directly
-    the `MediaSession` or the player.
-  - The `MediaController` only updates the UI and calls the `MediaSession`.
-    It never calls the player directly.
-  - The `MediaSession` only calls the `Player` and the `MediaController`. It's
-    never in charge of updating the UI.
-  - The `Player` only calls the `MediaSession`, and never the `MediaController`
-    or the UI.
+The `MediaController` and `MediaSession` classes are universal. This means that
+any controller encapsulated by a `MediaController` can bidirectionally connect
+to any player encapsulated by a `MediaSession`. An author can create a
+controller and wrap it around a `MediaController`, and a completely different
+author can create a player and wrap it around a `MediaSession`, and Android
+guarantees that these two entities will be able to bidirectionally communicate
+between them, without the authors having to know about each other's work.
 
 SASSA
   - About the `MediaController`:
