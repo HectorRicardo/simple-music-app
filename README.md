@@ -175,7 +175,9 @@ that the double-pointed arrows indicate bidirectional communication):
   </figcaption>
 </figure>
 
-There's no by
+Each entity (box) in the diagram above is only allowed to communicate with
+the other entity(ies) it has a connection with. There's no bypassing entities
+at all.
     
 The `MediaController` and `MediaSession` classes are universal. This means that
 any controller encapsulated by a `MediaController` can bidirectionally connect
@@ -185,12 +187,9 @@ author can create a player and wrap it around a `MediaSession`, and Android
 guarantees that these two entities will be able to bidirectionally communicate
 between them, without the authors having to know about each other's work.
 
-SASSA
-  - About the `MediaController`:
-      - The UI communicates exclusively with the `MediaController` (the UI never
-        calls the player or the `MediaSession` directly).
-      - The `MediaController` never calls the player directly: it calls the
-        `MediaSession` instead.
+
+
+
       - The `MediaController` issues player commands to the `MediaSession`. Commands can be either:
           - Built-in, common commands, such as play, pause, stop, and seek.
           - Extensible custom commands, used to define special behaviors unique
@@ -198,8 +197,6 @@ SASSA
       - It receives callbacks from the `MediaSession` informing about player state changes in order to update the UI.
         - These callbacks are also known as "Controller callbacks".
   - About the `MediaSession`:
-    - It's responsible for all communication with the player.
-    - The player is only called from the `MediaSession`.
     - It receives command callbacks from the `MediaController`, and forwards
       these commands to the player.
          - Command callbacks are also known as "Session callbacks".
@@ -207,9 +204,7 @@ SASSA
 
 
 A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
-with one or more `MediaController`s simultaneously. This allows your player to be
-controlled from your app's UI as well as from other places (Google Assistant, notification bar, etc..).
-Each of these "places" creates its own `MediaController` and connects to your app's `MediaSession` the same way.
+with one or more `MediaController`s simultaneously.
 
 ## Player State
 
