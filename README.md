@@ -60,13 +60,13 @@ implementation.
 To understand the Android music app architecture, we first need to explicitly
 list out the expectations that a decent Android music-playing app must fulfill:
 
-  - **Expectation 1**: The app's music player should be able to be controlled
-    not only from the app's UI itself, but also from other places, such as:
+  - **Expectation 1**: The app's music player should be controllable not only
+    from the app's UI itself, but also from other places, such as:
       - the device's/peripherals' external hardware media buttons
       - the notification bar/lock screen (your app should provide a notification
         for the player)
       - Google Assistant
-      - other devices/apps (see Expectation 2)
+      - other devices/apps (see Expectation 2).
   - **Expectation 2**: The app's player should be discoverable to companion
     devices, such as Android Auto and Wear OS. Depending on your use case, your
     app's player might also need to be discoverable by other apps.
@@ -93,16 +93,16 @@ start working on our app's code.
 
 # The `MediaController`-`MediaSession` part
 
-This architectural part is used to fulfill Expectation 1, which is repeated
-below for convenience.
+This architectural part is used to fulfill Expectation 1, which I repeat here
+below for convenience:
 
-> **Expectation 1**: The app's music player should be able to be controlled not
-> only from the app's UI itself, but also from other places, such as:
->   - the device's/peripherals' external hardware media buttons
->   - the notification bar/lock screen (your app should provide a notification
->     for the player)
->   - Google Assistant
->   - other devices/apps 
+> The app's music player should be controllable not only from the app's UI
+> itself, but also from other places, such as:
+>  - the device's/peripherals' external hardware media buttons
+>  - the notification bar/lock screen (your app should provide a notification
+>    for the player)
+>  - Google Assistant
+>  - other devices/apps
 
 In Android terminology, the "places" from which we should be able to control the
 app's player (including the app's UI) are referred to as **media controllers**
@@ -128,9 +128,9 @@ levels of abstractions:
       same behavior and functionality no matter if we're in Android, iOS,
       Windows, Linux, etc..
     - However, the player's implementation can (and most likely will) be
-      platform-dependent. The player will likely have to call into
+      platform-dependent (the player will likely have to call into
       platform-specific frameworks and platform-specific APIs to get the audio
-      media rendered, depending on the platform it lives in. We only care that
+      media rendered, depending on the platform it lives in). We only care that
       the player's API is platform-independent.
     - Once you achieve this level of abstraction, your player will be callable
       as an independent entity from anywhere *within your app*, but not from
@@ -138,17 +138,17 @@ levels of abstractions:
   - The **Android-level abstraction**: This is the abstraction that we're
     interested in this section. It's an Android-specific abstraction. We need
     to isolate the player in a Android-specific standalone media-player-module
-    so that it's callable from the Android-specific media controllers.
+    so that it's callable from the Android-specific media controllers, some of
+    which may live *outside* your app.
     - Since some of the media controllers live in different apps/processes than
       the player, the controller-player communication might need to be handled
       externally by the OS, rather than by your app.
     - Thus, the OS needs to be able to identify your player as a standalone,
       callable media-player-module.
-    - Thus, we need to abstract the player such that it is identified as such
-      by the OS.
+    - Thus, we need to abstract the player in such a way that it is identified
+      as such by the OS.
     - Once we achieve this abstraction, the player will be callable from the
-      media controllers, whether they're *internal* to your app or *external*
-      to it.
+      media controllers, whether they're internal to your app or external to it.
 
 You first achieve the behavioral-level abstraction, and then you work towards
 achieving the Android-level abstraction.
@@ -157,23 +157,32 @@ achieving the Android-level abstraction.
 > Android-level abstraction without the behavioral-level one. But that's a very
 > bad practice, and I'm not going to explain that here.
 
-To achieve the Android-level abstraction, Android provides us with some
-universal classes for both the player and the media controllers.
-
-To allow for a decoupled and bidirectional communication between a player and
-its media controllers, Android provides two universal classes:
+To achieve the Android-level abstraction, Android provides us two classes:
   - An instance of `MediaController`, which encapsulates a single media
     controller.
-  - an instance of `MediaSession`, which encapsulates the player. 
-    
-Any controller that wants to communicate with an app's player
-    needs a `MediaController`. Any player
-    that wants to be controlled from other controllers must be associated to
-    a `MediaSession`.
+  - an instance of `MediaSession`, which encapsulates the player.
 
 Using these classes, the controllers never have to communicate with player
 directly, and conversely the player never has to directly communicate with
-controllers. Instead:
+controllers. Instead, the communication happens exclusively between the
+`MediaController` and the `MediaSession`.
+
+<figure>
+  <img src="docs_images/media-app-with-android-classes.png"
+       alt="Media app diagram with Android classes">
+  <figcaption>
+    Figure 2. Media app diagram with Android classes
+  </figcaption>
+</figure>
+    
+By "universal", this means that any controller encapsulated by a `MediaController`
+can connect to any player encapsulated by a `MediaSession`. An author can create
+a controller and wrap it around a `MediaController`, and a completely different
+author can create a player and wrap it around a player, and Android can guarantee
+that these two entities will be able to communicate between them.
+
+
+
 
   - The controllers communicates bidirectionally with its associated
     `MediaController`.
@@ -203,14 +212,6 @@ the previous numbered list):
      the event.
   3. The `MediaController` calls updates the UI state to display that the player
      is now in the "PLAYING" state (or something similar).
-
-<figure>
-  <img src="docs_images/media-app-with-android-classes.png"
-       alt="Media app diagram with Android classes">
-  <figcaption>
-    Figure 2. Media app diagram with Android classes
-  </figcaption>
-</figure>
 
 The communication flow between UI and player is always like this, in both
 directions. There's no bypassing at all. That is:
