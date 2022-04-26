@@ -176,8 +176,7 @@ that the double-pointed arrows indicate bidirectional communication):
 </figure>
 
 Each entity (box) in the diagram above is only allowed to communicate with
-the other entity(ies) it has a connection with. There's no bypassing entities
-at all.
+the other entity(ies) it points to. There's no "bypassing" entities at all.
     
 The `MediaController` and `MediaSession` classes are universal. This means that
 any controller encapsulated by a `MediaController` can bidirectionally connect
@@ -187,24 +186,64 @@ author can create a player and wrap it around a `MediaSession`, and Android
 guarantees that these two entities will be able to bidirectionally communicate
 between them, without the authors having to know about each other's work.
 
+Using the `MediaController` and `MediaSession` classes allows your player to 
+mantain multiple connections to and receive commands from multiple controllers
+in the same user journey. For example, this user journey is possible:
 
+  1. You issue a "play" command from your app's UI. This plays song "A".
+  2. You pause the player through the player's notification bar. This pauses the
+     same song "A" you started in step 1.
+  3. You skip to the next song through the Google Assistant. This skips to song
+     "B" (which follows song "A").
+  4. You plug in your headphones to your device and press the "Pause" button on
+     them. This pauses song "B".
+     - It doesn't matter whether the exernal media device (in this case, the
+       headphones) was previously plugged in or not. The player responds to the
+       command as expected.
+     - When the external media device is plugged in, Android automatically
+       creates a media controller for it under the hood.
 
+> NOTE: A `MediaSession` can  connect to multiple `MediaController`s at a time.
+> However, the inverse is not true: a `MediaController` can connect to only one
+> `MediaSession` at a time.
 
-      - The `MediaController` issues player commands to the `MediaSession`. Commands can be either:
-          - Built-in, common commands, such as play, pause, stop, and seek.
-          - Extensible custom commands, used to define special behaviors unique
-            to your app.
-      - It receives callbacks from the `MediaSession` informing about player state changes in order to update the UI.
-        - These callbacks are also known as "Controller callbacks".
-  - About the `MediaSession`:
-    - It receives command callbacks from the `MediaController`, and forwards
-      these commands to the player.
-         - Command callbacks are also known as "Session callbacks".
-    - When the player updates its state, sends a controller callback to the `MediaController` notifying about this update.
+Something to add: coloquially speaking, we often make these adjustments to our
+language:
+  - We often refer to a controller and its associated `MediaController`
+    instance as simply "media controller".
+  - We often refer to a player and its associated `MediaSession` instance as
+    simply "media session".
 
+Since these are abstractions, we don't need to strictly distinguish a
+controller from its associated `MediaController`, or a player from its
+associated `MediaSession`. We just refer them as a whole by "media session"
+or "media controller". 
 
-A `MediaController` can connect to only one `MediaSession` at a time, but a `MediaSession` can connect
-with one or more `MediaController`s simultaneously.
+From this point onwards, we will be adopting these colloquial ways of
+speech.
+
+# The `MediaBrowser`-`MediaBrowserService` part
+
+The `MediaController` and `MediaSession` classes make your player controllable
+from various controllers... but how do these controllers find out about the
+existence of your player in the first place?
+
+This is where the `MediaBrowser` and the `MediaBrowserService` classes come into
+play. They make your player discoverable.
+
+To be fair, some `MediaController`s are able to discover your player without
+needing the help of these classes (although they might need other setup to be
+able to work... we will cover these later). Such `MediaController`s are:
+  - Your app's UI: This is obvious, because the player's `MediaSession` lives
+    in your own app... there's nothing to discover.
+  - Your player's notification: The notification's button listeners are defined
+    in your app, and you can call the `MediaSession` directly.
+  - The Google Assistant
+  - The external hardware media buttons
+
+But the media controllers living in other apps, Android Auto, and Wear OS cannot
+find your player on their own (strictly speaking, they cannot find your player's
+`MediaSession` on their own).
 
 ## Player State
 
