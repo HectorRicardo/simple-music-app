@@ -162,13 +162,28 @@ To achieve the Android-level abstraction, Android provides us two classes:
     controller.
   - an instance of `MediaSession`, which encapsulates the player.
 
-Using these classes, the controllers never have to communicate with player
-directly, and conversely the player never has to directly communicate with
-controllers. Instead, the communication happens exclusively between the
-`MediaController` and the `MediaSession`.
+Using these classes, the media controllers don't communicate directly with the
+player. Instead:
+
+  1. Each controller sends *transport commands* (pause, play, etc..) to its
+     respective `MediaController` instance.
+  3. The `MediaController`s call the desired player's `MediaSession`,
+     forwarding the transport commands sent.
+  3. The `MediaSession` forwards the same commands to the player.
+  4. The player finally receives the commands, and it acts upon them.
+
+Conversely, with these classes, the player doesn't communicate with the
+controllers directly. Instead:
+
+  1. A player calls the `MediaSession`, informing that an event of interest
+     has happened (for example, the `onPlaybackStarted` event).
+  2. The `MediaSession` propagates the event to all the `MediaController`s
+     connected to it.
+  3. The `MediaController`s receive the event and act upon it (for example, by
+     updating a UI).
 
 <figure>
-  <img src="docs_images/media-app-with-android-classes.png"
+  <img src="docs_images/controller-session-connections.svg"
        alt="Media app diagram with Android classes">
   <figcaption>
     Figure 2. Media app diagram with Android classes
@@ -179,39 +194,13 @@ By "universal", this means that any controller encapsulated by a `MediaControlle
 can connect to any player encapsulated by a `MediaSession`. An author can create
 a controller and wrap it around a `MediaController`, and a completely different
 author can create a player and wrap it around a player, and Android can guarantee
-that these two entities will be able to communicate between them.
-
-
-
-
-  - The controllers communicates bidirectionally with its associated
-    `MediaController`.
-  - The `MediaController` communicates bidirectionally with the `MediaSession`.
-  - The `MediaSession` communicates bidirectionally with the player.
+that these two entities will be able to communicate between them, without the
+authors having to know about the e.
 
 Two of these classes are `MediaController` and `MediaSession`. I'm going to
 explain how the UI would end up communicating with the player using these
 classes. For the sake of the explanation, assume that the user pressed a "Play"
 button in the app to start the music playback.
-
-  1. The button's listener calls the `MediaController`.
-  2. The `MediaController` calls the `MediaSession`, forwarding the transport
-     command sent.
-  3. The `MediaSession` forwards the same command to the player.
-  4. The player finally receives the command, and it acts upon it.
-
-Assume that the player does some preparation before actually starting the
-playback (for example, it might retrieve the audio from the web). Once it
-actually begins playback, it needs to inform this to the UI. This is how it will
-communicate back to the UI (communication flow is now backwards with respect to
-the previous numbered list):
-
-  1. The Player calls the `MediaSession`, saying that the `onPlaybackStarted`
-     event just triggered.
-  2. The `MediaSession` communicates back to the `MediaController`, informing of
-     the event.
-  3. The `MediaController` calls updates the UI state to display that the player
-     is now in the "PLAYING" state (or something similar).
 
 The communication flow between UI and player is always like this, in both
 directions. There's no bypassing at all. That is:
