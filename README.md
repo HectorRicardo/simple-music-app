@@ -62,7 +62,7 @@ list out the expectations that a decent Android music-playing app must fulfill:
 
   - **Expectation 1**: The app's music player should be controllable not only
     from the app's UI, but also from other places, such as:
-      - the device's/peripherals' external hardware media buttons
+      - the device's/peripherals' hardware media buttons
       - the notification bar/lock screen (your app should provide a notification
         for the player)
       - Google Assistant
@@ -98,7 +98,7 @@ below for convenience:
 
 > The app's music player should be controllable not only from the app's UI,
 > but also from other places, such as:
->  - the device's/peripherals' external hardware media buttons
+>  - the device's/peripherals' hardware media buttons
 >  - the notification bar/lock screen (your app should provide a notification
 >    for the player)
 >  - Google Assistant
@@ -242,9 +242,9 @@ in question:
       - Your UI lives in the your app, just as the media session.
       - The notification button listeners (broadcast receivers) live in your app
         as well.
-  - If the media controller in question is the external hardware media buttons,
-    then Android is in charge of connecting it to a media session and
-    forwarding commands to it.
+  - If the media controller in question is the hardware media buttons, then
+    Android is in charge of connecting it to a media session and forwarding
+    commands to it.
       - If there's an active media session in the device, the command will be
         directed to that media session.
       - If there's no active media session, the command will be sent to the
@@ -253,8 +253,7 @@ in question:
         you and/or the other app's developers didn't follow the audio focus
         best practices), then the command will be sent to all media sessions.
   - If the media controller in question is Google Assistant assistant, the
-     behavior is a little bit different from that of the external media hardware
-     buttons:
+     behavior is a little bit different from that of the media hardware buttons:
       - If you indicated a specific app in the voice command (e.g. "play song A
         in Spotify" or "play song B in Youtube Music"), then the media session
         from that app will be used (whether active or not)
@@ -263,7 +262,7 @@ in question:
         the media session from that app will be used (whether active or not)
       - If you didn't specify either an app in the voice command or an preferred
         app in the settings, then the decision logic would be the same as the
-        external media hardware button's logic.
+        media hardware buttons' logic.
      
 
 Once your player is moved to the PLAYING state, we must **activate** a media
@@ -305,7 +304,7 @@ Such media controllers are:
   - Your player's notification: The notification's button listeners are defined
     in your app, and you can call the media session directly from them.
   - The Google Assistant
-  - The external hardware media buttons
+  - The hardware media buttons
 
 However, media controllers living in
 
@@ -387,7 +386,7 @@ And there are. Android provides two such classes:
     - Position (current progress as displayed in a seekbar)
     - Speed: How fast the media is being played (1x, 1.5x, 0.5x, etc..)
     - Valid controller actions (both built-in and custom) that can be handled in the current state.
-        - These actions define what commands and external hardware media buttons the player will
+        - These actions define what commands and hardware media buttons the player will
           respond to in the current state.
     - Active error code and error message, if any. Errors can be fatal or non-fatal:
         -  **Fatal**: Happens when playback is interrupted and cannot resume.
