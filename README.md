@@ -45,7 +45,7 @@ exposes some reasonable API. This API might contain methods such as `play()`,
 `onSongFinished()`. We will be fleshing out the details of the audio player's
 API as we see fit throughout the course of this documentation.
 
-# Spliting up the architecture
+# Splitting up the architecture
 
 > Note before starting: some software development guides/tutorials normally
 introduce code samples/snippets as they present concepts for you to follow along
@@ -231,12 +231,47 @@ or "media session".
 
 From this point onwards, we will be adopting these colloquial ways of speech.
 
+Once they are connected, a media controller can send commands to a media
+session. But let's take a step back: how does a media controller find out about
+the existence of a media session in the first place?
+
+This is a good question and the answer is: it depends on the media controller
+in question.
+  - If the media controller in question is your UI, then your media session is
+    already within its reach, because they both leave in the same app (your
+    app).
+  - If the media controller in question is the external hardware media buttons,
+    then Android is in charge of connecting it to a media session:
+      - If there's an active media session in the device, the hardware button
+        command will be directed to that media session.
+      - If there's no active media session, the command will be sent to the
+        media session that was most recently active
+      - If for some reason there is more than active media sessions (because
+        you and/or the other app's developers didn't follow the audio focus
+        best practices), then I don't know.
+
+Once your player is moved to the PLAYING state, we must **activate** a media
+session (by calling one of its methods). If the player is then PAUSED, the media
+session remains ACTIVE, but if the player is STOPPED, then we mark the media
+session as INACTIVE.
+
+There should only be one active media session at a time on a device. Android
+doesn't enforce this, but you can take steps to guarantee this. Later, we'll see
+about the concept of "audio focus", but to give a quick glimpse, only one media
+session can have "audio focus" at a time. If media session A wants to start
+playing while media session B is already active, then media session A should
+preemtively take the audio focus first before playing. When media session B loses
+audio focus, it should be programmed to stop playback and remain quiet.
+
+
+
+An active media session is automatically discoverable by these media controllers
+
 # The `MediaBrowser`-`MediaBrowserService` part
 
 The `MediaController` and `MediaSession` classes make your player controllable
-from various contmechs. This is very good, and you might feel that this is all
-your app needs. But let's take a step back: how does a contmech find out about
-the existence of your player in the first place? (Actually, a better worded
+from various contmechs. But let's take a step back: how does a contmech find out
+about the existence of your player in the first place? (Actually, a better worded
 question would be: how do `MediaController`s find out about the existence of a
 particular `MediaSession`?).
 
