@@ -104,13 +104,17 @@ below for convenience:
 >  - Google Assistant
 >  - other devices/apps
 
-In Android terminology, the "places" from which we should be able to control the
-app's player (including the app's UI) are referred to as **media controllers**
-(or simply "controllers").
+For the sake of the explanation, let's give these "places" a name so we can
+refer to them easily. These places are really player controlling mechanisms,
+so let's call them "*contmechs*" (short for **cont**roller **mech**anisms).
 
-To achieve this goal, we need to abstract the player from the rest of the app.
-That is, we need to separate the player into a decoupled, standalone Android
-module that is callable from any of the Android media controllers.
+> NOTE: The word "contmech" doesn't exist, either in the dictionary or in the
+> Android docs. It's a word I just invented to make it easier to refer to the
+> "places" listed in bullets in Expectation 1.
+
+To fulfill Expectation 1, we need to abstract the player from the rest of the
+app. That is, we need to separate the player into a decoupled, standalone
+Android module that is callable from any of the contmechs listed above.
 
 Hold on...didn't we do that already? Wasn't the initial assumption of this guide
 that the player is already implemented and abstracted, and we just care about
@@ -138,17 +142,17 @@ levels of abstractions:
   - The **Android-level abstraction**: This is the abstraction that we're
     interested in this section. It's an Android-specific abstraction. We need
     to isolate the player in a Android-specific standalone media-player-module
-    so that it's callable from the Android-specific media controllers, some of
-    which may live *outside* your app.
-    - Since some of the media controllers live in different apps/processes than
-      the player, the controller-player communication might need to be handled
-      externally by the OS, rather than by your app.
+    so that it's callable from the Android-specific contmechs, some of which
+    live *outside* your app.
+    - Since some contmechs live in different apps/processes than the player,
+      the contmech-player communication might need to be handled externally by
+      the OS, rather than by your app.
     - Thus, the OS needs to be able to identify your player as a standalone,
       callable media-player-module.
     - Thus, we need to abstract the player in such a way that it is identified
       as such by the OS.
     - Once we achieve this abstraction, the player will be callable from the
-      media controllers, whether they're internal to your app or external to it.
+      contmechs, whether they're internal to your app or external to it.
 
 You first achieve the behavioral-level abstraction, and then you work towards
 achieving the Android-level abstraction.
@@ -158,19 +162,15 @@ achieving the Android-level abstraction.
 > bad practice, and I'm not going to explain that here.
 
 To achieve the Android-level abstraction, Android provides us two classes:
-  - An instance of `MediaController`, which encapsulates a single media
-    controller.
+  - An instance of `MediaController`, which encapsulates a single contmech.
   - an instance of `MediaSession`, which encapsulates the player.
 
-You need to wrap your player in a `MediaSession`. Conversely, you also need to
-instantiate a `MediaController` and make your UI exclusively communicate to it.
-This way, your UI will follow the same pattern as the rest of the controllers.
-
-Using this `MediaController`-`MediaSession` pattern, the media controllers don't
-communicate directly with the player, and conversely, the player doesn't
-communicate directly with the media controllers. Instead, the communication
-flows according to this diagram (note that the double-pointed arrows indicate
-bidirectional communication):
+Using these classes, the contmechs and the player are fully decoupled. Contmechs
+sit behind their respective `MediaController`s, and the player sits behind the 
+`MediaSession`. With the contmechs and player isolated, it's the
+`MediaController`s and the `MediaSession` that communicate between them. The
+following diagram outlines how communication flows (note that the double-pointed
+arrows indicate bidirectional communication):
 
 <figure>
   <img src="docs_images/controller-session-connections.svg"
@@ -182,17 +182,21 @@ bidirectional communication):
 
 Each entity (box) in the diagram above is only allowed to communicate with
 the other entity(ies) it points to. There's no "bypassing" entities at all.
+
+You'll need to wrap your player inside a `MediaSession`. Also, since your app's
+UI is a contmech, you'll need to call the `MediaController` methods (and only
+those methods) from it.
     
 The `MediaController` and `MediaSession` classes are universal. This means that
-any controller encapsulated by a `MediaController` can bidirectionally connect
+any contmech encapsulated by a `MediaController` can bidirectionally connect
 to any player encapsulated by a `MediaSession`. An author can create a
-controller and wrap it around a `MediaController`, and a completely different
+contmech and wrap it around a `MediaController`, and a completely different
 author can create a player and wrap it around a `MediaSession`, and Android
 guarantees that these two entities will be able to bidirectionally communicate
 between them, without the authors having to know about each other's work.
 
 Using the `MediaController` and `MediaSession` classes allows your player to 
-mantain multiple connections to and receive commands from multiple controllers
+mantain multiple connections to and receive commands from multiple contmechs
 in the same user journey. For example, this user journey is possible:
 
   1. You issue a "play" command from your app's UI. This plays song "A".
@@ -208,36 +212,23 @@ in the same user journey. For example, this user journey is possible:
      - When the external media device is plugged in, Android automatically
        creates a media controller for it under the hood.
 
-> NOTE: A `MediaSession` can  connect to multiple `MediaController`s at a time.
+> NOTE: A `MediaSession` can connect to multiple `MediaController`s at a time.
 > However, the inverse is not true: a `MediaController` can connect to only one
 > `MediaSession` at a time.
-
-Something to add: coloquially speaking, we often make these adjustments to our
-language:
-  - We often refer to a controller and its associated `MediaController`
-    instance as simply "media controller".
-  - We often simply use the term "media session" to refer to either:
-      - the player and its associated `MediaSession` instance
-      - or simply the `MediaSession` instance.
-
-Since these are abstractions, we don't need to strictly distinguish a
-controller from its associated `MediaController`, or a player from its
-associated `MediaSession`. We just refer them as a whole by "media controller"
-or "media session". 
-
-From this point onwards, we will be adopting these colloquial ways of speech.
 
 # The `MediaBrowser`-`MediaBrowserService` part
 
 The `MediaController` and `MediaSession` classes make your player controllable
-from various controllers... but let's take a step back. How do these controllers
-find out about the existence of your player (or rather, of your media session)
-in the first place? If a media controller cannot locate a media session to send
-commands to, then it's basically useless.
+from various contmechs. This is very good, and you might feel that this is all
+your app needs. But let's take a step back: how does a contmech find out about
+the existence of your player in the first place? (Actually, a better worded
+question would be: how do  `MediaController`s find out about the existence of a
+particular `MediaSession`?).
 
-This is where the `MediaBrowser` and the `MediaBrowserService` classes come into
-play. They make your player's media session *discoverable*, so it's reachable to
-other media controllers.
+If a `MediaController` cannot locate a `MediaSession` to send commands to, then
+it's basically useless. Fortunately, this is where the `MediaBrowser` and the
+`MediaBrowserService` classes come into play. They make the `MediaSession`
+*discoverable*, so it's reachable from other `MediaControllers`.
 
 To be fair, some media controllers are able to discover your media session
 without needing the `MediaBrowser` or `MediaBrowserService` classes (although
