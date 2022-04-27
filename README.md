@@ -236,19 +236,35 @@ session. But let's take a step back: how does a media controller find out about
 the existence of a media session in the first place?
 
 This is a good question and the answer is: it depends on the media controller
-in question.
-  - If the media controller in question is your UI, then your media session is
-    already within its reach, because they both leave in the same app (your
-    app).
+in question:
+  - If the media controller in question is your UI or your player's
+    notification, then your media session is already within its reach, because: 
+      - Your UI lives in the your app, just as the media session.
+      - The notification button listeners (broadcast receivers) live in your app
+        as well.
   - If the media controller in question is the external hardware media buttons,
-    then Android is in charge of connecting it to a media session:
-      - If there's an active media session in the device, the hardware button
-        command will be directed to that media session.
+    then Android is in charge of connecting it to a media session and
+    forwarding commands to it.
+      - If there's an active media session in the device, the command will be
+        directed to that media session.
       - If there's no active media session, the command will be sent to the
-        media session that was most recently active
+        media session that was most recently active.
       - If for some reason there is more than active media sessions (because
         you and/or the other app's developers didn't follow the audio focus
-        best practices), then I don't know.
+        best practices), then the command will be sent to all media sessions.
+  - If the media controller in question is Google Assistant assistant, the
+     behavior is a little bit different from that of the external media hardware
+     buttons:
+      - If you indicated a specific app in the voice command (e.g. "play song A
+        in Spotify" or "play song B in Youtube Music"), then the media session
+        from that app will be used (whether active or not)
+      - If you didn't specify an app in the voice command, but you previously
+        specified a preferred music app in Google Assistant's preferences, then
+        the media session from that app will be used (whether active or not)
+      - If you didn't specify either an app in the voice command or an preferred
+        app in the settings, then the decision logic would be the same as the
+        external media hardware button's logic.
+     
 
 Once your player is moved to the PLAYING state, we must **activate** a media
 session (by calling one of its methods). If the player is then PAUSED, the media
