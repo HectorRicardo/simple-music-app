@@ -230,43 +230,57 @@ From this point onwards, we will be adopting these colloquial ways of speech.
 # The `MediaBrowser`-`MediaBrowserService` part
 
 The `MediaController` and `MediaSession` classes make your player controllable
-from various controllers... but how do these controllers find out about the
-existence of your player (or rather, of your media session) in the first place?
+from various controllers... but let's take a step back. How do these controllers
+find out about the existence of your player (or rather, of your media session)
+in the first place? If a media controller cannot locate a media session to send
+commands to, then it's basically useless.
 
 This is where the `MediaBrowser` and the `MediaBrowserService` classes come into
-play. They make your player's media session *discoverable*.
+play. They make your player's media session *discoverable*, so it's reachable to
+other media controllers.
 
 To be fair, some media controllers are able to discover your media session
-without needing these classes (although they might need other setup to be able
-to work... we will cover such setup later). Such media controllers are:
+without needing the `MediaBrowser` or `MediaBrowserService` classes (although
+they might need other setup to be able to work... we will cover such setup later).
+Such media controllers are:
   - Your app's UI: This is obvious, because the media session lives in your own
-    same app, so there's nothing to discover.
+    same app. The media session is already "discovered".
   - Your player's notification: The notification's button listeners are defined
     in your app, and you can call the media session directly from them.
   - The Google Assistant
   - The external hardware media buttons
 
-But media controllers living in:
+However, media controllers living in
+
   - other apps
   - Android Auto
   - Wear OS
+
 cannot find your media session on their own. These media controllers need help
 from the `MediaBrowser` and `MediaBrowserService` classes.
 
-In addition, you might want browse what media content (ex. songs) your app
-offers, and you might want to do such browsing from outside your app (for
-example, from Android Auto). A media controller can only control your player:
-it cannot know what content is available for playback. You need *browsing*
-capabilities, and these capabilities are offered through the `MediaBrowser` and
-`MediaBrowserService` classes.
+In addition, once a media controller discovers and connects to a media session,
+then what? How does it know what songs/recordings/playlists are there available
+for playback? A media controller can say, "Ok media session, please play song X",
+but how does it even know that song X even exists?
 
-Finally, your app should have the capacity to keep playing while it's
-in the *background*. Once it begins to play audio, the player should run as a
-background task, and the user should be able to switch to another app, minimize
-your app, or even lock the device, and still continue to listen. In Android, the
-ability to perform background work is done through **services**, and the
-`MediaBrowserService` class is precisely a service used for music player apps to
-give them such background playback feature.
+There must be some functionality in place that lets a media controller browse the
+content library offered by the media session. A media controller doesn't have such
+browsing capabilities. Instead, these browsing capabilities are offered through the
+`MediaBrowser` and `MediaBrowserService` classes (hence, their naming).
+
+So even the media controllers that are able to discover your media session on
+their own need the `MediaBrowser` and `MediaBrowserService` classes. Once they
+discover and connect to the media session, they want to browse its content library
+so they know what's possible to play.
+
+Finally, your app should have the capacity to keep playing while it's in the
+*background*. Once it begins to play audio, the player should run as a background
+task, and the user should be able to switch to another app, minimize your app, or
+even lock the device, and still continue to listen. In Android, the ability to
+perform background work is done through **services**, and the `MediaBrowserService`
+class is precisely a service used for music player apps to give them such background
+playback feature.
 
 So to summarize, the `MediaBrowser` and `MediaBrowserService` classes bring in
 three pieces of crucial functionality to your app:
