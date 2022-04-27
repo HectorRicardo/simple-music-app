@@ -28,9 +28,9 @@ extensions `.wav` and `.mp3`.
 
 However, in this documentation, we're not going to focus on implementing the
 audio player. Instead, we're going to do two things:
-  1. We're going to assume that the audio player entity is already implemented
-     and it's callable through a certain reasonable API that it exposes.
-  2. With this assumption in mind, we will focus on something more of a higher
+  1. We're going to assume that the audio player is already implemented and it's
+     callable through a certain API that it exposes.
+  3. With this assumption in mind, we will focus on something more of a higher
      level: the music app's **architecture**, specifically for Android.
 
 We don't need to know how the audio player is implemented to be able to define
