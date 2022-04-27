@@ -216,13 +216,28 @@ in the same user journey. For example, this user journey is possible:
 > However, the inverse is not true: a `MediaController` can connect to only one
 > `MediaSession` at a time.
 
+Something to add: coloquially speaking, we often make these adjustments to our
+language:
+  - We often refer to a controller and its associated `MediaController`
+    instance as simply "media controller".
+  - We often simply use the term "media session" to refer to either:
+      - the player and its associated `MediaSession` instance
+      - or simply the `MediaSession` instance.
+
+Since these are abstractions, we don't need to strictly distinguish a
+controller from its associated `MediaController`, or a player from its
+associated `MediaSession`. We just refer them as a whole by "media controller"
+or "media session". 
+
+From this point onwards, we will be adopting these colloquial ways of speech.
+
 # The `MediaBrowser`-`MediaBrowserService` part
 
 The `MediaController` and `MediaSession` classes make your player controllable
 from various contmechs. This is very good, and you might feel that this is all
 your app needs. But let's take a step back: how does a contmech find out about
 the existence of your player in the first place? (Actually, a better worded
-question would be: how do  `MediaController`s find out about the existence of a
+question would be: how do `MediaController`s find out about the existence of a
 particular `MediaSession`?).
 
 If a `MediaController` cannot locate a `MediaSession` to send commands to, then
@@ -279,8 +294,6 @@ three pieces of crucial functionality to your app:
     media controllers.
   - They allow *browsing* your app's content library from outside your app's
     UI.
-      - Clients that are able to browse the content library are called *media
-        browsers*
   - The `MediaBrowserService` allows your app to keep playing while its UI is
     in the background (not visible to the user).
     
@@ -291,24 +304,26 @@ details later):
      inside a `MediaBrowser`.
   2. Wrap your media session (which already wraps your player) inside a
      `MediaBrowserService`. 
-  3. Setup your `MediaBrowserService` so it allows incoming connections from your
+  3. Set up your `MediaBrowserService` so it allows incoming connections from your
      `MediaBrowser` (and from other `MediaBrowser`s you wish to allow access to).
        - You can set connection permissions to your `MediaBrowserService` on a
          `MediaBrowser`-per-`MediaBrowser` basis. We'll see later how to do this.
-       - For the `MediaBrowser`s that you did gave access permissions, you can
-         define how much of the app's media library they will be able to browse.
-         Again, we'll see the details of this later on.
+       - For the `MediaBrowser`s that you did gave connection permissions to, you
+         can define how much of the app's media library they will be able to
+         browse. Again, we'll see the details of this later on.
   4. Connect your `MediaBrowser` to your `MediaBrowserService`.
   5. After connection succeeds, now make your media controller connect to your
      media session.
      
-If you're observant, you might be asking this question: "But on Step 4, how will the
-`MediaBrowser`s *themselves* discover the `MediaBrowserService`? It's cyclical!".
+If you're observant, you might be asking this question: "But on Step 4, how will
+the `MediaBrowser`s *themselves* discover the `MediaBrowserService`? We're back
+to the initial problem!". The answer is that you just need to provide them with
+the `MediaBrowserService`'s fully qualified class name. You also need to do some
+additional setup (which we'll cover later), but for discoverability purposes, the
+fully qualified class name is enough.
 
-The answer is that you just need to provide them with the `MediaBrowserService`
-fully qualified class name. You also need to do some additional setup (which we'll
-cover later), but for discoverability purposes, the fully qualified class name is
-enough.
+Once you follow these steps, your app will automatically get these three features
+for free.
 
 ## Player State
 
@@ -367,9 +382,9 @@ Android offers a Service class precisely for music apps: the `MediaBrowserServic
   from external places (e.g. Google Assistant) when the activity was alive.
 
 To make your activity bind to the `MediaBrowserService`, you need a `MediaBrowser` instance. In particular, you need to:
-- Make your activity own a `MediaBrowser` instance.
-- Make the `MediaBrowser` instance connect to the `MediaBrowserService`. 
-- From the `MediaBrowserService`, allow the incoming connection to establish.
+  - Make your activity own a `MediaBrowser` instance.
+  - Make the `MediaBrowser` instance connect to the `MediaBrowserService`. 
+  - From the `MediaBrowserService`, allow the incoming connection to establish.
 
 When a `MediaBrowser` connects to the `MediaBrowserService`, it performs for you some internal boilerplate set-up for proper connection, and then binds the activity to the service.
 
