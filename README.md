@@ -58,11 +58,11 @@ and once we have a full understanding of them, we can start working on the app's
 implementation.
 
 To understand the Android music app architecture, we first need to explicitly
-list out the expectations that a decent Android music-playing app must fulfill:
+list out some of the expectations that a decent Android music-playing app must
+fulfill:
 
   - **Expectation 1**: The app's music player should be controllable not only
     from the app's UI, but also from other places, such as:
-      - the device's/peripherals' hardware media buttons
       - the notification bar/lock screen (your app should provide a notification
         for the player)
       - Google Assistant
@@ -77,6 +77,9 @@ list out the expectations that a decent Android music-playing app must fulfill:
         etc..).
   - **Expectation 3**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen.
+    
+These are not all the expectations, but they are enough so I can give a rationale
+for the architecture that I'm about to present.
     
 To meet these expectations, the Android music app architecture is split into two
 parts:
