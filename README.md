@@ -57,67 +57,50 @@ first introduce these elements in an ordered, logical, and easy-to-follow way,
 and once we have a full understanding of them, we can start working on the app's
 implementation.
 
-To understand the Android music app architecture, we first need to explicitly
-list out some of the expectations that a decent Android music-playing app must
-fulfill:
+To understand the Android music app architecture, we first need to have in mind
+some of the expectations that a decent Android music-playing app must fulfill:
 
-  - **Expectation 1**: The app's music player should be controllable not only
-    from the app's UI, but also from other places, such as:
+  - **Expectation 1**: The app's music player should be consistently
+    controllable not only from the app's UI, but also from other places (aka
+    "**controllers**"), such as:
       - the notification bar/lock screen (your app should provide a notification
         for the player)
       - Google Assistant
-      - other devices/apps (see Expectation 2).
-  - **Expectation 2**: The app's player should be discoverable to companion
-    devices, such as Android Auto and Wear OS. Depending on your use case, your
-    app's player might also need to be discoverable by other apps.
-      - Once discovered, your app's player should be able to be controlled from
-        the discoverer entities, as per Expectation 1.
-      - Depending on your use case, you may also allow the discoverer entities to
-        access your app's music library (songs, playlists, albums, artists,
-        etc..).
+      - external media hardware buttons
+      - Android Auto
+      - Wear OS
+      - other custom apps (might not be necessary, depending on your use case).
+  - **Expectation 2**: Android Auto, Wear OS, and other custom controlling apps
+    should be able to access and browse the music library (songs, playlists,
+    albums, artists, etc..). offered by your app.
   - **Expectation 3**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen.
     
-These are not all the expectations, but they are enough so I can give a rationale
-for the architecture that I'm about to present.
-    
-To meet these expectations, the Android music app architecture is split into two
-parts:
-  - The `MediaController`-`MediaSession` part: used to meet Expectation 1.
-  - The `MediaBrowser`-`MediaBrowserService` part: used to meet Expectations 2
-    and 3.
+To meet these expectations, we need to architect our app in 5 overall/general
+steps, which I outline below. I'm gonna be explaining these 5 steps in the next
+sections, so don't worry if they don't make sense in the first read.
+  1. Wrap your player inside a **media session** (that is, abstract your player
+     and put it behind a media session).
+  2. Wrap the media session inside a **media browser service**.
+  3. From your UI activity, connect to the media browser service using a **media
+     browser**.
+  4. Once your activity is connected to the service, create a
+     **media controller** linked to the media session created in step 1.
+  5. Finally, use the media controller to control (send commands to) the player.
+     (Technically speaking, the media controller sends the commands to the media
+     session, and the latter forwards the commands to the player).
 
-These two part are then combined together to form the complete music app
-architecture. 
-    
-I'm going to explain these two parts. Once I'm done explaining them, the
-Android music app architecture will fully make sense, and we will be able to
-start working on our app's code.
+# Step 1. Wrap your player inside a media session
 
-# The `MediaController`-`MediaSession` part
+The first expectation listed above states that the player should be controllable
+from several places (aka **controllers**), not only from your own app's UI. To
+fulfill this expectation, several steps must be taken. This section describes the
+first step.
 
-This architectural part is used to fulfill Expectation 1, which I repeat here
-below for convenience:
-
-> The app's music player should be controllable not only from the app's UI,
-> but also from other places, such as:
->  - the device's/peripherals' hardware media buttons
->  - the notification bar/lock screen (your app should provide a notification
->    for the player)
->  - Google Assistant
->  - other devices/apps
-
-For the sake of the explanation, let's give these "places" a name so we can
-refer to them easily. These places are really player controlling mechanisms,
-so let's call them "*contmechs*" (short for **cont**roller **mech**anisms).
-
-> NOTE: The word "contmech" doesn't exist, either in the dictionary or in the
-> Android docs. It's a word I just invented to make it easier to refer to the
-> "places" listed in bullets in Expectation 1.
-
-To fulfill Expectation 1, we need to abstract the player from the rest of the
-app. That is, we need to separate the player into a decoupled, standalone
-Android module that is callable from any of the contmechs listed above.
+The first step needed to fulfill this requirement is that we need to abstract the
+player from the rest of your app. That is, we need to separate the player into a
+decoupled Android module that is callable from any of the previously listed
+controllers.
 
 Hold on...didn't we do that already? Wasn't the initial assumption of this guide
 that the player is already implemented and abstracted, and we just care about
@@ -144,18 +127,18 @@ levels of abstractions:
       outside it.
   - The **Android-level abstraction**: This is the abstraction that we're
     interested in this section. It's an Android-specific abstraction. We need
-    to isolate the player in a Android-specific standalone media-player-module
-    so that it's callable from the Android-specific contmechs, some of which
-    live *outside* your app.
-    - Since some contmechs live in different apps/processes than the player,
-      the contmech-player communication might need to be handled externally by
-      the OS, rather than by your app.
-    - Thus, the OS needs to be able to identify your player as a standalone,
-      callable media-player-module.
+    to isolate the player in a Android-specific media-player-module so that it's
+    callable from the Android-specific controllers, some of which live *outside*
+    your app.
+    - Since some controllers live in different apps/processes than the player,
+      the controller-player communication needs to be handled by the OS, rather
+      than by your app.
+    - Thus, the OS needs to be able to identify your player as a callable
+      media-player-module.
     - Thus, we need to abstract the player in such a way that it is identified
       as such by the OS.
     - Once we achieve this abstraction, the player will be callable from the
-      contmechs, whether they're internal to your app or external to it.
+      controllers, whether they're internal to your app or external to it.
 
 You first achieve the behavioral-level abstraction, and then you work towards
 achieving the Android-level abstraction.
@@ -164,75 +147,59 @@ achieving the Android-level abstraction.
 > Android-level abstraction without the behavioral-level one. But that's a very
 > bad practice, and I'm not going to explain that here.
 
-To achieve the Android-level abstraction, Android provides us two classes:
-  - An instance of `MediaController`, which encapsulates a single contmech.
-  - an instance of `MediaSession`, which encapsulates the player.
+The Android-specific media-player-module used to achieve the Android-level
+abstraction is called a **media session**. A media session is an instance of
+the `MediaSession` class. You need to wrap your player and put it behind a
+media session, such that your player exclusively communicates to and from the
+media session. Nothing, except the media session itself, should communicate
+with the player.
 
-Using these classes, the contmechs and the player are fully decoupled. Contmechs
-sit behind their respective `MediaController`s, and the player sits behind the 
-`MediaSession`. With the contmechs and player isolated, it's the
-`MediaController`s and the `MediaSession` that communicate between them. The
-following diagram outlines how communication flows (note that the double-pointed
-arrows indicate bidirectional communication):
+The media session gives your player a common, Android-specific universal
+interface. Thanks to it, any controller, regardless of whether it lives in your
+app's process or outside it, can send commands to and receive updates from your
+player. The controller is actually communicating with the media session, and
+the media session is forwarding the messages to your player. Similarly, your
+player sends updates to the media session, which forwards these updates to the
+controllers.
 
-<figure>
-  <img src="docs_images/controller-session-connections.svg"
-       alt="Media app diagram with Android classes">
-  <figcaption>
-    Figure 2. Media app diagram with Android classes
-  </figcaption>
-</figure>
+A media session can be connected to several controllers at a time, meaning
+that it can receive commands from multiple sources in what a user would 
+perceive as the same "user journey". For example, this user journey is possible:
 
-Each entity (box) in the diagram above is only allowed to communicate with
-the other entity(ies) it points to. There's no "bypassing" entities at all.
-
-You'll need to wrap your player inside a `MediaSession`. Also, since your app's
-UI is a contmech, you'll need to call the `MediaController` methods (and only
-those methods) from it.
-    
-The `MediaController` and `MediaSession` classes are universal. This means that
-any contmech encapsulated by a `MediaController` can bidirectionally connect
-to any player encapsulated by a `MediaSession`. An author can create a
-contmech and wrap it around a `MediaController`, and a completely different
-author can create a player and wrap it around a `MediaSession`, and Android
-guarantees that these two entities will be able to bidirectionally communicate
-between them, without the authors having to know about each other's work.
-
-Using the `MediaController` and `MediaSession` classes allows your player to 
-mantain multiple connections to and receive commands from multiple contmechs
-in the same user journey. For example, this user journey is possible:
-
-  1. You issue a "play" command from your app's UI. This plays song "A".
-  2. You pause the player through the player's notification bar. This pauses the
-     same song "A" you started in step 1.
-  3. You skip to the next song through the Google Assistant. This skips to song
-     "B" (which follows song "A").
+  1. You issue a "play" command from your app's UI (controller 1). This plays
+     song "A".
+  3. You pause the player through the player's notification bar (controller 2).
+     This pauses the same song "A" you started in step 1.
+  3. You skip to the next song through the Google Assistant (controller 3).
+     This skips to song "B" (which follows song "A").
   4. You plug in your headphones to your device and press the "Pause" button on
      them. This pauses song "B".
-     - It doesn't matter whether the exernal media device (in this case, the
-       headphones) was previously plugged in or not. The player responds to the
-       command as expected.
-     - When the external media device is plugged in, Android automatically
-       creates a media controller for it under the hood.
+     - (It doesn't matter whether the exernal media device, in this case, the
+       headphones, was previously plugged in or not. The player responds to the
+       command as expected).
+       
+Your player should react the same (consistently) to a given command, no matter
+who sent it. In other words, your player should not need to know who is the
+sender of a given command to know how to react to it. For example, the example
+user journey above should be equivalent as if all its commands had been issued
+only from your app's UI.
 
-> NOTE: A `MediaSession` can connect to multiple `MediaController`s at a time.
-> However, the inverse is not true: a `MediaController` can connect to only one
-> `MediaSession` at a time.
+Once the player is behind a media session, we will no longer refer to the
+player. We'll simply refer to the media session.
 
-Something to add: coloquially speaking, we often make these adjustments to our
-language:
-  - We often refer to a controller and its associated `MediaController`
-    instance as simply "media controller".
-  - We often simply use the term "media session" to refer to either:
-      - the player and its associated `MediaSession` instance
-      - or simply the `MediaSession` instance.
+Ok, so we abstracted our player into a media session. Are we done? Not yet,
+this was the first step. Read on.
 
-Since these are abstractions, we don't need to strictly distinguish a
-controller from its associated `MediaController`, or a player from its
-associated `MediaSession`. We just refer them as a whole by "media controller"
-or "media session". 
+## Wrap the media session inside a media browser service.
 
-From this point onwards, we will be adopting these colloquial ways of speech.
+How do the controllers first make contact with a media session? How do they
+"become aware" that a media session exists?
+
+What is a media browser service, and why do we care? A media browser service
+is a type of service in Android, which will allow our player to keep playing
+in the background, even if our UI activity is destroyed. But not only that:
+a media browser service 
+
 
 Once they are connected, a media controller can send commands to a media
 session. But let's take a step back: how does a media controller find out about
@@ -266,7 +233,6 @@ in question:
       - If you didn't specify either an app in the voice command or an preferred
         app in the settings, then the decision logic would be the same as the
         media hardware buttons' logic.
-     
 
 Once your player is moved to the PLAYING state, we must **activate** a media
 session (by calling one of its methods). If the player is then PAUSED, the media
