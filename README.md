@@ -70,11 +70,15 @@ some of the expectations that a decent Android music-playing app must fulfill:
       - Android Auto
       - Wear OS
       - other custom apps (might be optional, depending on your use case).
-  - **Expectation 2**: Android Auto, Wear OS, and other custom controlling apps
+  - **Expectation 2**: The app should keep playing in the background even if the
+    user minimizes it, switches to another app, or locks the screen. While it's
+    on the background, the player should still remain controllable by the
+    controlling places.
+  - **Expectation 3**: Android Auto, Wear OS, and other custom controlling apps
     should be able to access and browse the music library (songs, playlists,
-    albums, artists, etc..). offered by your app.
-  - **Expectation 3**: The app should keep playing in the background even if the
-    user minimizes it, switches to another app, or locks the screen.
+    albums, artists, etc..). offered by your app. If they found a media item
+    available in your media library, they should be able to command the player
+    to play that item.
     
 To meet these expectations, we need to architect our app in 5 overall/general
 steps, which I outline below. I'm gonna be explaining these 5 steps in the next
@@ -82,8 +86,11 @@ sections, so don't worry if they don't make sense in the first read.
   1. Wrap your player inside a **media session** (that is, abstract your player
      and put it behind a media session).
   2. Wrap the media session inside a **media browser service**.
-  3. From your UI activity, connect to the media browser service using a **media
-     browser**.
+  3. Define a notification associated to the media session
+  4. Define access permissions to the media browser service.
+  5. Organize your media content library and let the media browser service provide
+     it.
+  6. From your UI activity, connect to the media browser service
   4. Once your activity is connected to the service, create a
      **media controller** linked to the media session created in step 1.
   5. Finally, use the media controller to control (send commands to) the player.
@@ -147,7 +154,7 @@ To achieve the Android-level abstraction, we need to separate the player into a
 decoupled media-player-module. This module is known as a **media session**. You
 wrap your player into and put it behind a media session, such that your player is
 totally insulated from the rest of your app. Communication to and from the player
-will happe exclusively through the media session. This means that
+will happen exclusively through the media session. This means that:
 
   - Controlling places wanting to reach your player have to do so via the media
     session. Controlling places will send player commands to the media session,
@@ -157,8 +164,8 @@ will happe exclusively through the media session. This means that
     notifications/updates to the media session, which in turn will forward
     these updates to the controlling places so they can update their own UI.
     
-The media session is now the one in charge of connecting between controlling
-places to your player.
+The media session is now the one in charge of connecting controlling places to
+your player.
 
 This pattern effectively hides your player's API (which it was up to you to
 define) and exposes the media session's API (which Android OS and the
@@ -168,8 +175,8 @@ controlling place, regardless of whether it is situated inside your app's
 process or outside it, can send commands to and receive updates from your
 player.
 
-A media session can be connected to multiple controlling places simultaneously,
-meaning that it can receive commands from distinct sources in what a user will
+A media session can connect to multiple controlling places simultaneously,
+meaning that it can receive commands from distinct places in what a user will
 consider the same "user journey". For example, this user journey is possible:
 
   1. You issue a "play" command from your app's UI (controller 1). This plays
@@ -178,17 +185,17 @@ consider the same "user journey". For example, this user journey is possible:
      This pauses the same song "A" you started in step 1.
   3. You skip to the next song through the Google Assistant (controller 3).
      This skips to song "B" (which follows song "A").
-  4. You plug in your headphones to your device and press the "Pause" button on
-     them. This pauses song "B".
-     - (It doesn't matter whether the exernal media device, in this case, the
+  4. You plug in your headphones (controller 4) to your device and press the
+     "Pause" button on them. This pauses song "B".
+     - It doesn't matter whether the exernal media device, in this case, the
        headphones, was previously plugged in or not. The player responds to the
-       command as expected).
+       command as expected.
        
 Your player should react the same (consistently) to a given command, no matter
 who sent it. In other words, your player should not need to know who is the
-sender of a given command to know how to react to it. For example, the example
-user journey above should be equivalent as if all its commands had been issued
-only from your app's UI.
+sender of a given command to know how to react to it. For example, the user
+journey above should be equivalent as if all its commands had been issued only
+from your app's UI.
 
 Ok, so we abstracted our player into a media session. Are we done? Not yet,
 this was the first step. Read on.
