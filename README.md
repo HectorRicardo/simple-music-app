@@ -144,13 +144,10 @@ achieving the Android-level abstraction.
 > bad practice, and I'm not going to explain that here.
 
 To achieve the Android-level abstraction, we need to separate the player into a 
-decoupled media-player-module, just as we said. This module is known as a
-**media session**. You wrap your player into and put it behind a media session,
-such that your player is totally insulated from the rest of your app. Your
-player will now only be called from the media session, and will communicate with 
-the external world exclusively through the media session.
-
-This means that:
+decoupled media-player-module. This module is known as a **media session**. You
+wrap your player into and put it behind a media session, such that your player is
+totally insulated from the rest of your app. Communication to and from the player
+will happe exclusively through the media session. This means that
 
   - Controlling places wanting to reach your player have to do so via the media
     session. Controlling places will send player commands to the media session,
