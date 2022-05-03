@@ -62,14 +62,14 @@ some of the expectations that a decent Android music-playing app must fulfill:
 
   - **Expectation 1**: The app's music player should be consistently
     controllable not only from the app's UI, but also from other places (aka
-    "**controllers**"), such as:
+    **controlling places**), such as:
       - the notification bar/lock screen (your app should provide a notification
         for the player)
       - Google Assistant
       - external media hardware buttons
       - Android Auto
       - Wear OS
-      - other custom apps (might not be necessary, depending on your use case).
+      - other custom apps (might be optional, depending on your use case).
   - **Expectation 2**: Android Auto, Wear OS, and other custom controlling apps
     should be able to access and browse the music library (songs, playlists,
     albums, artists, etc..). offered by your app.
@@ -93,14 +93,10 @@ sections, so don't worry if they don't make sense in the first read.
 # Step 1. Wrap your player inside a media session
 
 The first expectation listed above states that the player should be controllable
-from several places (aka **controllers**), not only from your own app's UI. To
-fulfill this expectation, several steps must be taken. This section describes the
-first step.
-
-The first step needed to fulfill this requirement is that we need to abstract the
-player from the rest of your app. That is, we need to separate the player into a
-decoupled Android module that is callable from any of the previously listed
-controllers.
+from several **controlling places**, not only from your own app's UI. To achieve
+this, we need to abstract the player from the rest of your app. That is, we need
+to separate the player into a decoupled Android module that is callable from any
+of the previously listed controlling places.
 
 Hold on...didn't we do that already? Wasn't the initial assumption of this guide
 that the player is already implemented and abstracted, and we just care about
@@ -127,18 +123,18 @@ levels of abstractions:
       outside it.
   - The **Android-level abstraction**: This is the abstraction that we're
     interested in this section. It's an Android-specific abstraction. We need
-    to isolate the player in a Android-specific media-player-module so that it's
-    callable from the Android-specific controllers, some of which live *outside*
-    your app.
-    - Since some controllers live in different apps/processes than the player,
-      the controller-player communication needs to be handled by the OS, rather
-      than by your app.
+    to isolate the player into a Android-specific media-player-module so that
+    it's callable from the Android-specific controlling places, some of which
+    are situated *outside* your app.
+    - Since some controlling places are situated outside your player's app's
+      process, the controller-player communication needs to be handled by the OS,
+      rather than by your app.
     - Thus, the OS needs to be able to identify your player as a callable
       media-player-module.
-    - Thus, we need to abstract the player in such a way that it is identified
-      as such by the OS.
+    - Thus, we need to abstract/isolate the player in such a way that it is
+      identified as such by the OS.
     - Once we achieve this abstraction, the player will be callable from the
-      controllers, whether they're internal to your app or external to it.
+      controlling places, whether they're internal to your app or external to it.
 
 You first achieve the behavioral-level abstraction, and then you work towards
 achieving the Android-level abstraction.
@@ -147,24 +143,37 @@ achieving the Android-level abstraction.
 > Android-level abstraction without the behavioral-level one. But that's a very
 > bad practice, and I'm not going to explain that here.
 
-The Android-specific media-player-module used to achieve the Android-level
-abstraction is called a **media session**. A media session is an instance of
-the `MediaSession` class. You need to wrap your player and put it behind a
-media session, such that your player exclusively communicates to and from the
-media session. Nothing, except the media session itself, should communicate
-with the player.
+To achieve the Android-level abstraction, we need to separate the player into a 
+decoupled media-player-module, just as we said. This module is known as a
+**media session**. You wrap your player into and put it behind a media session,
+such that your player is totally insulated from the rest of your app. Your
+player will now only be called from the media session, and will communicate with 
+the external world exclusively through the media session.
 
-The media session gives your player a common, Android-specific universal
-interface. Thanks to it, any controller, regardless of whether it lives in your
-app's process or outside it, can send commands to and receive updates from your
-player. The controller is actually communicating with the media session, and
-the media session is forwarding the messages to your player. Similarly, your
-player sends updates to the media session, which forwards these updates to the
-controllers.
+This means that:
 
-A media session can be connected to several controllers at a time, meaning
-that it can receive commands from multiple sources in what a user would 
-perceive as the same "user journey". For example, this user journey is possible:
+  - Controlling places wanting to reach your player have to do so via the media
+    session. Controlling places will send player commands to the media session,
+    which in turn will forward these commands to the player.
+  - If your player needs to send event notifications/updates to the controlling
+    places, it does so via the media session. The player will send such
+    notifications/updates to the media session, which in turn will forward
+    these updates to the controlling places so they can update their own UI.
+    
+The media session is now the one in charge of connecting between controlling
+places to your player.
+
+This pattern effectively hides your player's API (which it was up to you to
+define) and exposes the media session's API (which Android OS and the
+controlling places already know and agree with). The media session gives your
+player a common, Android-specific universal interface. Thanks to this, any
+controlling place, regardless of whether it is situated inside your app's
+process or outside it, can send commands to and receive updates from your
+player.
+
+A media session can be connected to multiple controlling places simultaneously,
+meaning that it can receive commands from distinct sources in what a user will
+consider the same "user journey". For example, this user journey is possible:
 
   1. You issue a "play" command from your app's UI (controller 1). This plays
      song "A".
@@ -184,16 +193,18 @@ sender of a given command to know how to react to it. For example, the example
 user journey above should be equivalent as if all its commands had been issued
 only from your app's UI.
 
-Once the player is behind a media session, we will no longer refer to the
-player. We'll simply refer to the media session.
-
 Ok, so we abstracted our player into a media session. Are we done? Not yet,
 this was the first step. Read on.
 
 ## Wrap the media session inside a media browser service.
 
-How do the controllers first make contact with a media session? How do they
-"become aware" that a media session exists?
+How do the controllers connect with a media session?
+
+If you're thinking of your UI activity as the only controller for your media
+session, then you're thinking of this the wrong way. There can be several
+controllers, and some of them might not even live in your app's process. From
+the media session's perspective, every controller is seen as an equal. 
+there must be an intra-process mechanism to connect controllers to media sessions 
 
 What is a media browser service, and why do we care? A media browser service
 is a type of service in Android, which will allow our player to keep playing
