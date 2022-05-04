@@ -90,7 +90,13 @@ section for more information about services. If you already know services, you
 may skip the next section.
 
 # Services
-    
+
+A service is an app component that: 
+  - Is able to to perform work in the background without needing a UI activity to
+    be visible.
+A service is also able to mantain connections with several clients. Clients
+can bind (connect) to the service and send commands to it.
+
 In fact, music apps are such a very good, common, and practical examples where we
 can use the client-server architecture that Android created two particular
 classes for this scenario: the `MediaBrowser` (corresponding to the client)
