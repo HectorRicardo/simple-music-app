@@ -42,8 +42,7 @@ For the purposes of this documentation (which exclusively focuses on the music
 app's architecture), we will assume that the player is already implemented and
 exposes some reasonable API. This API might contain methods such as `play()`,
 `pause()`, `skipToNext()`, and might also issue event callbacks such as
-`onSongFinished()`. We will be fleshing out the details of the audio player's
-API as we see fit throughout the course of this documentation.
+`onSongFinished()`.
 
 # Splitting up the architecture
 
@@ -58,28 +57,52 @@ and once we have a full understanding of them, we can start working on the app's
 implementation.
 
 To understand the Android music app architecture, we first need to have in mind
-some of the expectations that a decent Android music-playing app must fulfill:
+the two most important expectations that a decent Android music-playing app must
+fulfill:
 
-  - **Expectation 1**: The app's music player should be consistently
-    controllable not only from the app's UI, but also from other places (aka
-    **controlling places**), such as:
+  - **Expectation 1**: The app's music player should be controllable not only
+    from the app's UI, but also from other places (aka **controllers**), such as:
       - the notification bar/lock screen (your app should provide a notification
         for the player)
-      - Google Assistant
       - external media hardware buttons
+      - Google Assistant
       - Android Auto
       - Wear OS
-      - other custom apps (might be optional, depending on your use case).
+      - other custom apps.
   - **Expectation 2**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen. While it's
     on the background, the player should still remain controllable by the
-    controlling places.
-  - **Expectation 3**: Android Auto, Wear OS, and other custom controlling apps
-    should be able to access and browse the music library (songs, playlists,
-    albums, artists, etc..). offered by your app. If they found a media item
-    available in your media library, they should be able to command the player
-    to play that item.
+    controllers listed above.
     
+If you're knowledgeable in Android development, you'll probably realize that these
+expectations strongly suggest that we need a client-server architecture for our
+app. This is because:
+
+  - A service is used to perform work in the background while the app is
+    minimized. If our player lives inside a service, then this will fulfill the
+    second expectation.
+  - A client can connect and send commands to the service. If we consider clients
+    to be the controllers listed in Expectation 1, then this fulfills said
+    expectation.
+    
+If you're not knowledgeable in Android, or want a quick refresh, then read on for
+more information about services.
+    
+In fact, music apps are such a very good, common, and practical examples where we
+can use the client-server architecture that Android created two particular
+classes for this scenario: the `MediaBrowser` (corresponding to the client)
+and the `MediaBrowserService` (corresponding to the service).
+
+This is how it will work:
+
+  1. You associate a `MediaBrowser` instance to your activity. Th media browser
+     instance will act as a client to your service.
+  2. Upon app startup, the media browser binds to your service.
+  3. 
+app startup, will bind to your service `
+
+client-service
+
 To meet these expectations, we need to architect our app in 5 overall/general
 steps, which I outline below. I'm gonna be explaining these 5 steps in the next
 sections, so don't worry if they don't make sense in the first read.
