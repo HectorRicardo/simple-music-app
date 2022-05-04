@@ -85,8 +85,11 @@ app. This is because:
     to be the controllers listed in Expectation 1, then this fulfills said
     expectation.
     
-If you're not knowledgeable in Android, or want a quick refresh, then read on for
-more information about services.
+If you're not knowledgeable in Android, or want a quick refresh, then read the next
+section for more information about services. If you already know services, you
+may skip the next section.
+
+# Services
     
 In fact, music apps are such a very good, common, and practical examples where we
 can use the client-server architecture that Android created two particular
