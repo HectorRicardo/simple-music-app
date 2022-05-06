@@ -91,16 +91,35 @@ may skip the next section.
 
 # Services
 
-In a nutshell, a service is an app component that: 
-  - Is able to to perform work in the background without needing a UI activity to
-    be visible.
-  - Allows other contexts to bind to it (bind = connect to it) and receive commands
-    (messages) from such contexts.
+A service is an app component that has two features: 
+  - It's able to perform work in the background without needing a UI activity to be
+    visible.
+  - It allows other contexts to bind to it (bind = connect to it) and to receive
+    commands (messages) from such contexts.
     
+How do you interact with a service in your app?
+
+First, you need to be aware that a service is an instance of a subclass that extends
+the abstract `Service` class, and that services are singletons. That is, given a
+`Service` concrete subclass, there can only exist one instance of such subclass.
+
+Just as with other app components (such as activities), Android is in charge of
+managing the lifecycle/lifetime of this singleton service instance. For this reason,
+you don't directly create, destroy, or handle a service instance yourself. Android
+handles that for you. 
 
 
-A service is an instance of the `Service` class. A service is a singleton: there
-can only be one instance of a given service class.
+
+  - Start the instance of a given `Service` subclass: this makes a service start to
+    perform the background work it's supposed to perform.
+  - Bind a context to the instance of a given `Service` subclass: this causes the
+    context to connect to the service so it's ready to start sending command to its.
+ 
+Android then checks if the service instance already exists. If not, it creates it, and
+then proceeds to start it or bind to it (depending on what you requested). The next time
+you send a start or bind request, Android uses the already-existing instance.
+
+If you 
 
 From a context, you can *interact* with a service by doing any of the following:
   - Sending the start command to the service.
