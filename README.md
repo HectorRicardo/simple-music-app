@@ -91,11 +91,26 @@ may skip the next section.
 
 # Services
 
-A service is an app component that: 
+In a nutshell, a service is an app component that: 
   - Is able to to perform work in the background without needing a UI activity to
     be visible.
-A service is also able to mantain connections with several clients. Clients
-can bind (connect) to the service and send commands to it.
+  - Allows other contexts to bind to it (bind = connect to it) and receive commands
+    (messages) from such contexts.
+    
+
+
+A service is an instance of the `Service` class. A service is a singleton: there
+can only be one instance of a given service class.
+
+From a context, you can *interact* with a service by doing any of the following:
+  - Sending the start command to the service.
+  - Binding to the service.
+
+We say that a service is "interacted with" whenever a context does any of the
+two bullet points just listed above.
+
+The first time a service is interacted with, it is created. The next time an interaction
+happens, Android re-uses the same interaction
 
 In fact, music apps are such a very good, common, and practical examples where we
 can use the client-server architecture that Android created two particular
