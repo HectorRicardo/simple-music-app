@@ -82,7 +82,7 @@ app. This is because:
   - A service is used to perform work in the background while the app is
     minimized. If our player lives inside a service, then this will fulfill the
     second expectation.
-  - A client can bind to the service and send it commands. If we consider clients
+  - A client can send commands t. If we consider clients
     to be the controllers listed in Expectation 1, then this fulfills said
     expectation.
     
@@ -140,10 +140,15 @@ in your app:
         further below, the conditions to destroy a service are explained.
   - If you requested Android to bind a context to a service
       - The service is marked as BOUND, and the context is bound to the service.
+      - If a context is bound to a service, it can send custom, app-specific
+        requests/messages/commands directly to the service, and the service can send
+        responses.
       - One or several contexts can be bound to the service.
       - The first time a context binds to the service, the service's `onBind()` method
-        is called. However, subsequent bindings don't trigger this method anymore.
-        This is because the result of the `onBind()` method is cached.
+        is called. This method returns an interface that will be used by the context
+        to communicate with the service.
+      - However, subsequent bindings to the service don't trigger the `onBind()` method
+        anymore. This is because the result of the `onBind()` method is cached.
       - You can individually unbind any context previously bound.
       - If all contexts have unbound from the service, we say that the service is
         UNBOUND.
@@ -159,18 +164,37 @@ in your app:
          STOPPED and UNBOUND.
    - When the service is destroyed, its `onDestroy()` method is called.
 
+We normally use the term *client* to refer to the context/app component that requested
+Android to either send the start command to the service or bind to the service.
 
-In fact, music apps are such a very good, common, and practical examples where we
-can use the client-server architecture that Android created two particular
-classes for this scenario: the `MediaBrowser` (corresponding to the client)
-and the `MediaBrowserService` (corresponding to the service).
+# How a service
 
-This is how it will work:
+Music apps are implemented with a client-server architecture. In fact, music apps are
+such a very ideal, common, textbook, and practical examples where we can use this
+architecture that Android created two particular classes for them: the
+`MediaBrowserService` (corresponding to the service) and the `MediaBrowser`
+(corresponding to the client).
 
-  1. You associate a `MediaBrowser` instance to your activity. Th media browser
-     instance will act as a client to your service.
-  2. Upon app startup, the media browser binds to your service.
-  3. 
+Broadly speaking, this is how a music app with a client-server architecture works:
+
+  1. You code your app such that the audio player lives inside the
+     `MediaBrowserService` and your activity holds `MediaBrowser` instance (the client).
+  2. Upon app startup, the media browser (client) in your activity binds to the media
+     browser service.
+  3. The media browser can now send a custom, music-app-specific command to the
+     service. For example, it can send a command such as "Play song X".
+  4. The service is started, and the audio player starts playing the requested song.
+  5. The user navigates away from your app. The media browser unbinds, and your
+     activity is stopped/destroyed. However, since your service is STARTED, it remains
+     alive.
+  6. You are able to keep controlling the background player service through other
+     controllers, such as the Google Assistant. This will happen in the same way* that
+     your app's UI controlled the service.
+     
+* Note: due to an Android bug, there's a difference in how the notification and external
+  hardware media buttons communicate with the service. I'll explain this difference in
+  due time.
+
 app startup, will bind to your service `
 
 client-service
