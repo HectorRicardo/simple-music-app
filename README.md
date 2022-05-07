@@ -100,11 +100,13 @@ A service is an app component that serves two purposes:
     given service.
     
 To understand how you can practically use a service in your app, you need to know
-that there are two general things you can do with a service. For a lack of a better
-term, I'll call these two general things 
+several things about services:
 
-  - Send the "start" command to a service.
-  - Bind a context to a service.
+  - A service is an instance of a subclass that extends the abstract `Service`
+    class.
+  - Services are singletons. That is, given a `Service` concrete subclass, there can
+    exist only one instance of such subclass.
+  - 
 
 In turn, the two general things affect how a service moves throughout its
 **lifecycle**, that is, how a service comes into existence, how a service moves
@@ -118,10 +120,6 @@ The two use-mechanisms listed above and a service's lifecycle are topics deeply
 interconnected to one another, so I'll be talking about both of them inseparately.
 
 ## Mechanisms to use a service/Service's lifecycle
-
-First, you need to know that a service is an instance of a subclass that extends
-the abstract `Service` class. Services are singletons. That is, given a `Service`
-concrete subclass, there can only exist one instance of such subclass.
 
 When executing any of the two use-mechanisms, Android first checks if there's
 already an existing instance of the given `Service` subclass. If not, Android creates
