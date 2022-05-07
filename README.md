@@ -91,45 +91,67 @@ may skip the next section.
 
 # Services
 
-A service is an app component that has two features: 
+A service is an app component that serves two purposes:
+
   - It's able to perform work in the background without needing a UI activity to be
     visible.
   - It allows other contexts to bind to it (bind = connect to it) and to receive
-    commands (messages) from such contexts.
+    commands from such contexts. There can be 0, 1, or several contexts bound to a
+    given service.
     
-How do you interact with a service in your app?
+To understand how you can practically use a service in your app, you need to know
+that there are two general things you can do with a service. For a lack of a better
+term, I'll call these two general things 
 
-First, you need to be aware that a service is an instance of a subclass that extends
-the abstract `Service` class, and that services are singletons. That is, given a
-`Service` concrete subclass, there can only exist one instance of such subclass.
+  - Send the "start" command to a service.
+  - Bind a context to a service.
 
-Just as with other app components (such as activities), Android is in charge of
-managing the lifecycle/lifetime of this singleton service instance. For this reason,
-you don't directly create, destroy, or handle a service instance yourself. Android
-handles that for you. 
+In turn, the two general things affect how a service moves throughout its
+**lifecycle**, that is, how a service comes into existence, how a service moves
+throughout its lifecycle states, and how it is destroyed. Just as with other app
+components (such as activities), Android is in charge of managing the
+lifecycle/lifetime of a service. You don't *directly* create or destroy yourself: it's
+Android who does that. However, by doing the two general things listed above, not only
+you make use of the service, but also you *indirectly* control its lifecycle state.
 
+The two use-mechanisms listed above and a service's lifecycle are topics deeply
+interconnected to one another, so I'll be talking about both of them inseparately.
 
+## Mechanisms to use a service/Service's lifecycle
 
-  - Start the instance of a given `Service` subclass: this makes a service start to
-    perform the background work it's supposed to perform.
-  - Bind a context to the instance of a given `Service` subclass: this causes the
-    context to connect to the service so it's ready to start sending command to its.
- 
-Android then checks if the service instance already exists. If not, it creates it, and
-then proceeds to start it or bind to it (depending on what you requested). The next time
-you send a start or bind request, Android uses the already-existing instance.
+First, you need to know that a service is an instance of a subclass that extends
+the abstract `Service` class. Services are singletons. That is, given a `Service`
+concrete subclass, there can only exist one instance of such subclass.
 
-If you 
+When executing any of the two use-mechanisms, Android first checks if there's
+already an existing instance of the given `Service` subclass. If not, Android creates
+it, which executes the service's class `onCreate()` method. Then, now that we guaranteed
+that there exists an instance of the service class, Android continues executing the
+requested use-mechanism.
 
-From a context, you can *interact* with a service by doing any of the following:
-  - Sending the start command to the service.
-  - Binding to the service.
+**From the behavior's point of view**:
 
-We say that a service is "interacted with" whenever a context does any of the
-two bullet points just listed above.
+## Start/Stop behavior
+If you requested to send the "Start" command to the service, then this service is
+put in the STARTED state. The service's `onStartCommand()` method is executed.
+This method should start the work that is to be performed in the background.
 
-The first time a service is interacted with, it is created. The next time an interaction
-happens, Android re-uses the same interaction
+A service can be sent the "Start" command many times, even if it's already in the
+STARTED state. Every time it receives the "Start" command (regardless of whether it
+is STARTED or not), the service's `onStartCommand()` is executed. For this reason,
+you should check for the STARTEd state in `onStartCommand()` to avoid restarting
+work that's currently already running.
+
+Once a service is started, you can stop the service. This removes the service from
+the STARTED state and puts it in the STOPPED state.
+
+## Bound/unbound behavior
+On the other hand, if you requested to bind a context to the service, then we say that
+the service is BOUND. The context that is now bound to the service is ready to start
+sending commands to it.
+
+Multiple contexts can be bound to the service. As long as the number of bound context
+is greater than 0, we say that the service is bound.
 
 In fact, music apps are such a very good, common, and practical examples where we
 can use the client-server architecture that Android created two particular
