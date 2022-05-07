@@ -30,7 +30,7 @@ However, in this documentation, we're not going to focus on implementing the
 audio player. Instead, we're going to do two things:
   1. We're going to assume that the audio player is already implemented and it's
      callable through a certain API that it exposes.
-  3. With this assumption in mind, we will focus on something more of a higher
+  2. With this assumption in mind, we will focus on something more of a higher
      level: the music app's **architecture**, specifically for Android.
 
 We don't need to know how the audio player is implemented to be able to define
@@ -61,7 +61,7 @@ the two most important expectations that a decent Android music-playing app must
 fulfill:
 
   - **Expectation 1**: The app's music player should be controllable not only
-    from the app's UI, but also from other places (aka **controllers**), such as:
+    from the app's UI, but also from other places, such as:
       - the notification bar/lock screen (your app should provide a notification
         for the player)
       - external media hardware buttons
@@ -69,6 +69,7 @@ fulfill:
       - Android Auto
       - Wear OS
       - other custom apps.
+    These places, plus the app's UI, are known as **controllers**.
   - **Expectation 2**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen. While it's
     on the background, the player should still remain controllable by the
@@ -81,17 +82,17 @@ app. This is because:
   - A service is used to perform work in the background while the app is
     minimized. If our player lives inside a service, then this will fulfill the
     second expectation.
-  - A client can connect and send commands to the service. If we consider clients
+  - A client can bind to the service and send it commands. If we consider clients
     to be the controllers listed in Expectation 1, then this fulfills said
     expectation.
     
-If you're not knowledgeable in Android, or want a quick refresh, then read the next
-section for more information about services. If you already know services, you
-may skip the next section.
+If you're not knowledgeable in Android services, or want a quick refresh in this
+topic, then read the next section for more information about services. Feel free
+to skip the next section if you're already knowledgeable in services.
 
 # Services
 
-A service is an app component that serves two purposes:
+A service is an app component that has two features:
 
   - It's able to perform work in the background without needing a UI activity to be
     visible.
@@ -99,8 +100,8 @@ A service is an app component that serves two purposes:
     commands from such contexts. There can be 0, 1, or several contexts bound to a
     given service.
     
-To understand how you can practically use a service in your app, you need to know
-several things about services:
+The following list of concepts explains how services work and how you can use them
+in your app:
 
   - A service is an instance of a subclass that extends the abstract `Service`
     class.
@@ -121,12 +122,22 @@ several things about services:
   - If you requested Android to send the service the "Start" command:
       - The service is put in the STARTED state.
       - The service's `onStartCommand()` method is executed.
+      - The `onStartCommand()` method should begin executing the work that it's
+        meant to be run in the background.
+      - However, even if a service is meant to run in the background, by default
+        it runs in your app's main UI thread. If you need to do time-consuming or
+        heavy-load work, you should delegate that to a new thread.
       - A service can be sent the "Start" command many times, even if it's already
         in the STARTED state.
       - Every time it receives the "Start" command (regardless of whether it is
         STARTED or not), the service's `onStartCommand()` is executed.
+      - For this reason, you should check for the STARTED state in the
+        `onStartCommand()` method to avoid restarting work that is already currently
+        running.
       - Once a service is started, you can stop the service. This removes the service
         from the STARTED state and puts it in the STOPPED state.
+      - Does stopping a service destroy it? Not necessarily. In a few bullet points
+        further below, the conditions to destroy a service are explained.
   - If you requested Android to bind a context to a service
       - The service is marked as BOUND, and the context is bound to the service.
       - One or several contexts can be bound to the service.
@@ -134,9 +145,20 @@ several things about services:
         is called. However, subsequent bindings don't trigger this method anymore.
         This is because the result of the `onBind()` method is cached.
       - You can individually unbind any context previously bound.
+      - If all contexts have unbound from the service, we say that the service is
+        UNBOUND.
    - A service can be both STARTED and BOUND.
-   - A service is kept alive as long as its STARTED or BOUND. That is, a service is
-     destroyed only when it has been stopped and there are no contexts bound to it.
+   - A service is kept alive as long as its STARTED and/or BOUND. That is, a service
+     is destroyed only when it has been stopped and there are no contexts bound to it.
+       - If a service is only STARTED (and not BOUND), it is destroyed as soon as it's
+         stopped.
+       - If a service is only BOUND (and not stopped), it is destroyed as soon as it
+         has no more contexts bound to it.
+       - If a service is both STARTED and BOUND, then only stopping it or only
+         unbinding all of its clients won't destroy it. The service needs to be both
+         STOPPED and UNBOUND.
+   - When the service is destroyed, its `onDestroy()` method is called.
+
 
 In fact, music apps are such a very good, common, and practical examples where we
 can use the client-server architecture that Android created two particular
