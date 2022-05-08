@@ -61,25 +61,24 @@ the two most important expectations that a decent Android music-playing app must
 fulfill:
 
   - **Expectation 1**: The app's music player should be controllable not only
-    from the app's UI, but also from other places, such as:
-      - the notification bar/lock screen (your app should provide a notification
-        for the player)
+    from the app's UI, but also from these other places:
+      - the app's notification (your app should provide a notification for the player)
       - external media hardware buttons
       - Google Assistant
-      - Android Auto
-      - Wear OS
-      - other custom apps.
-    
-    These places, plus the app's UI, are known as "controllers".
+  - Android Auto, Wear OS, and other custom controlling apps should be able to
+    access and browse the music library (songs, playlists, albums, artists, etc..)
+    offered by your app.
   - **Expectation 2**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen. While it's
-    on the background, the player should still remain controllable by the
-    controllers listed above.
+    on the background, the player should still remain controllable from the places
+    listed above.
     
-However, there's a nuance. 
+These expectations will guide and justify the architecture I will explain.
 
-Android considers music apps as a specialization of generic "media apps". A media
-app is a music app or a video app. Media apps have expectations, and these
+However, before explaining the architecture, there's a detail: Android considers
+music apps as a specialization of generic "media apps". A media app is a music app or
+a video app. There is a common expectation that apply to media apps, whether music or
+video apps.
 expectations are a subset of the music app's expectations. Out of the expectations
 of the music app, these are the expectations that apply to the most basic media app:
 
