@@ -69,11 +69,26 @@ fulfill:
       - Android Auto
       - Wear OS
       - other custom apps.
-    These places, plus the app's UI, are known as **controllers**.
+    
+    These places, plus the app's UI, are known as "controllers".
   - **Expectation 2**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen. While it's
     on the background, the player should still remain controllable by the
     controllers listed above.
+    
+However, there's a nuance. 
+
+Android considers music apps as a specialization of generic "media apps". A media
+app is a music app or a video app. Media apps have expectations, and these
+expectations are a subset of the music app's expectations. Out of the expectations
+of the music app, these are the expectations that apply to the most basic media app:
+
+  - *When the app's activity is in the foreground*, a media app's player (audio or
+    video player) should be controllable from the following places:
+      - the app's UI
+      - the notification bar
+      - external media hardware buttons
+      - Google Assistant.
     
 If you're knowledgeable in Android development, you'll probably realize that these
 expectations strongly suggest that we need a client-server architecture for our
