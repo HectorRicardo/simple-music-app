@@ -57,15 +57,33 @@ and once we have a full understanding of them, we can start working on the app's
 implementation.
 
 To understand the Android music app architecture, we first need to have in mind
-the three most important expectations that a decent Android music-playing app must
+that, in Android, a music app is actually a special type of a generic **media
+app**. A media app is a music/audio app or a video app, and can range from being
+very basic to offering advanced features. However, all media apps, regardless of
+their type and how basic they are, should fulfill this requirement:
+
+**Media app requirement**: While the app is in the foreground visible to the user,
+the media player (i.e. audio or video player) should be controllable not only from
+the app's UI, but also from external media hardware buttons and the Google Assistant.
+
+
+
+
+
+three most important expectations that a decent Android music-playing app must
 fulfill:
 
-  - **Expectation 1**: The app's music player should be controllable not only
-    from the app's UI, but also from these other places as well:
-      - the app's notification (your app should provide a notification for the player)
-      - external media hardware buttons
-      - Google Assistant
-  - **Expectation 2**: Android Auto, Wear OS, and other custom apps should be
+**Expectation 1**: The app's music player should be controllable not only from the
+app's UI, but also from these other places as well:
+  - the app's notification (your app should provide a notification for the
+        player)
+  - external media hardware buttons
+  - Google Assistant
+
+Think of Spotify. You're able to play, pause, skip to next, etc.. from Spotify's UI.
+But you can also do these things from the notifications, and the Google Assistant.
+And if you plug in an external speaker or headphones, you're able to 
+**Expectation 2**: Android Auto, Wear OS, and other custom apps should be
     able to control your app's player as well. In addition, they should also be
     able to access and browse the music library (songs, playlists, albums, artists,
     etc..) offered by your app.
@@ -74,20 +92,24 @@ fulfill:
     on the background, the player should still remain controllable from all the
     places listed above.
     
-These expectations will guide and justify the architecture I will explain.
+If you're knowledgeable in Android development, you'll probably realize that these
+expectations strongly suggest that we need a client-server architecture for our
+app. This is because:
+
+  - A service is used to perform work in the background while the app is
+    minimized. If our player lives inside a service, then this will fulfill the
+    third expectation.
+  - A client can send commands/requests to the service and communicate with it.
+    If we consider clients to be the controllers listed in Expectation 1 and 2,
+    then this fulfills said expectations.
+    
+
 
 However, before explaining the architecture, there's a detail: Android considers
 music apps as a specialization of generic "media apps". A media app is an audio app
 or a video app.
 expectations are a subset of the music app's expectations. Out of the expectations
 of the music app, these are the expectations that apply to the most basic media app:
-
-  - *When the app's activity is in the foreground*, a media app's player (audio or
-    video player) should be controllable from the following places:
-      - the app's UI
-      - the notification bar
-      - external media hardware buttons
-      - Google Assistant.
     
 If you're not knowledgeable in Android services, or want a quick refresh in this
 topic, then read the next section for more information about services. Feel free
