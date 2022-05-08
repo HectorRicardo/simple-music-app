@@ -57,28 +57,28 @@ and once we have a full understanding of them, we can start working on the app's
 implementation.
 
 To understand the Android music app architecture, we first need to have in mind
-the two most important expectations that a decent Android music-playing app must
+the three most important expectations that a decent Android music-playing app must
 fulfill:
 
   - **Expectation 1**: The app's music player should be controllable not only
-    from the app's UI, but also from these other places:
+    from the app's UI, but also from these other places as well:
       - the app's notification (your app should provide a notification for the player)
       - external media hardware buttons
       - Google Assistant
-  - Android Auto, Wear OS, and other custom controlling apps should be able to
-    access and browse the music library (songs, playlists, albums, artists, etc..)
-    offered by your app.
-  - **Expectation 2**: The app should keep playing in the background even if the
+  - **Expectation 2**: Android Auto, Wear OS, and other custom apps should be
+    able to control your app's player as well. In addition, they should also be
+    able to access and browse the music library (songs, playlists, albums, artists,
+    etc..) offered by your app.
+  - **Expectation 3**: The app should keep playing in the background even if the
     user minimizes it, switches to another app, or locks the screen. While it's
-    on the background, the player should still remain controllable from the places
-    listed above.
+    on the background, the player should still remain controllable from all the
+    places listed above.
     
 These expectations will guide and justify the architecture I will explain.
 
 However, before explaining the architecture, there's a detail: Android considers
-music apps as a specialization of generic "media apps". A media app is a music app or
-a video app. There is a common expectation that apply to media apps, whether music or
-video apps.
+music apps as a specialization of generic "media apps". A media app is an audio app
+or a video app.
 expectations are a subset of the music app's expectations. Out of the expectations
 of the music app, these are the expectations that apply to the most basic media app:
 
@@ -88,17 +88,6 @@ of the music app, these are the expectations that apply to the most basic media 
       - the notification bar
       - external media hardware buttons
       - Google Assistant.
-    
-If you're knowledgeable in Android development, you'll probably realize that these
-expectations strongly suggest that we need a client-server architecture for our
-app. This is because:
-
-  - A service is used to perform work in the background while the app is
-    minimized. If our player lives inside a service, then this will fulfill the
-    second expectation.
-  - A client can send commands t. If we consider clients
-    to be the controllers listed in Expectation 1, then this fulfills said
-    expectation.
     
 If you're not knowledgeable in Android services, or want a quick refresh in this
 topic, then read the next section for more information about services. Feel free
