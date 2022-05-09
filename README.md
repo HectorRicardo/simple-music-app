@@ -66,7 +66,7 @@ very basic to offering advanced features. However, all media apps, regardless of
 their type and how basic they are, should fulfill these two requirements:
 
 **Requirement 1**: While the app is in the foreground visible to the user, the audio or
-video player should be controllable *to a basic level* * not only from the app's UI, but
+video player should be controllable *to a basic level** not only from the app's UI, but
 also from:
   - app's player notification (your app should provide a notification for the player).
   - external media hardware buttons (these are hardware buttons physically found on
@@ -74,14 +74,15 @@ also from:
     a Bluetooth headset).
   - Google Assistant.
 
-* What does "*controllable to a basic level*" mean? It means that you can issue to the
-  player some of the most common playback commands, such as Play, Pause, Stop, Rewind,
-  Fast forward, skip to next, etc..
+*What does "*controllable to a basic level*" mean? It means that you can issue to the
+player some of the most common playback commands, such as Play, Pause, Stop, Rewind,
+Fast forward, skip to next, etc..
 
 The places from which an audio or video player is controllable are known as
 **controllers**. The app's UI, the player notification, the external media hardware media
-buttons and the Google Assistant are all examples of controllers. There are other
-possible controllers that can control the player, but the listed ones are the minimum-mandatory ones.
+buttons and the Google Assistant are all examples of controllers. You can program/setup
+your app so your player can receive commands from other controllers, but the ones listed
+here are the minimum-mandatory ones.
 
 **Requirement 2 (Generic media app)**: A well-designed media app should "play well
 together" with other apps that play audio. It should "take turns" and cooperate with other
