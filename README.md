@@ -56,41 +56,61 @@ first introduce these elements in an ordered, logical, and easy-to-follow way,
 and once we have a full understanding of them, we can start working on the app's
 implementation.
 
-To understand the Android music app architecture, we first need to have in mind
-that, in Android, a music app is actually a special type of a generic **media
-app**. A media app is a music/audio app or a video app, and can range from being
+To understand the Android music app architecture, we first need to list out the
+requirements/expectations that a music app must fulfill. And before we list out
+these expectations, we first need to have in mind that, in Android, a music app is
+actually a special type of a generic **media app**.
+
+A media app is a music/audio app or a video app, and can range from being
 very basic to offering advanced features. However, all media apps, regardless of
-their type and how basic they are, should fulfill this requirement:
+their type and how basic they are, should fulfill these two requirements:
 
-**Media app requirement**: While the app is in the foreground visible to the user,
-the media player (i.e. audio or video player) should be controllable not only from
-the app's UI, but also from external media hardware buttons and the Google Assistant.
+**Requirement 1**: While the app is in the foreground visible to the user, the audio or
+video player should be controllable *to a basic level* * not only from the app's UI, but
+also from:
+  - app's player notification (your app should provide a notification for the player).
+  - external media hardware buttons (these are hardware buttons physically found on
+    Android devices and other peripheral devices, for example, the pause/play button on
+    a Bluetooth headset).
+  - Google Assistant.
 
+* What does "*controllable to a basic level*" mean? It means that you can issue to the
+  player some of the most common playback commands, such as Play, Pause, Stop, Rewind,
+  Fast forward, skip to next, etc..
 
+The places from which an audio or video player is controllable are known as
+**controllers**. The app's UI, the player notification, the external media hardware media
+buttons and the Google Assistant are all examples of controllers. There are other
+possible controllers that can control the player, but the listed ones are the minimum-mandatory ones.
 
+**Requirement 2 (Generic media app)**: A well-designed media app should "play well
+together" with other apps that play audio. It should "take turns" and cooperate with other
+apps on your device that use the audio output stream. It should stop playing the audio or
+video when another app starts playing audio. This is to avoid having two audio streams
+playing at the same time and potentially confusing the user.
+  - For example, if a phone call comes in while you're listening to music, the player
+    should automatically stop so you can take the call.
+    
+These requirements apply to all media apps, whether they're music or video apps, and
+whether they're very basic or offer very advanced functionality.
 
+In addition to these requirements, music apps should fulfill the following extra
+requirements:
 
-three most important expectations that a decent Android music-playing app must
-fulfill:
+**Requirement 3 (Music-app-specific)**: The app should keep playing in the
+background even if the user minimizes it, switches to another app, or locks the screen.
+While it's on the background, the player should still remain controllable from the
+controllers listed in Requirement 1.
 
-**Expectation 1**: The app's music player should be controllable not only from the
-app's UI, but also from these other places as well:
-  - the app's notification (your app should provide a notification for the
-        player)
-  - external media hardware buttons
-  - Google Assistant
+**Requirement 4 (Music-app-specific)**: Besides the controllers listed in Requirement
+1, the app's music player should also be controllable from
+  - Android Auto
+  - Wear OS
+  - other custom apps
 
-Think of Spotify. You're able to play, pause, skip to next, etc.. from Spotify's UI.
-But you can also do these things from the notifications, and the Google Assistant.
-And if you plug in an external speaker or headphones, you're able to 
-**Expectation 2**: Android Auto, Wear OS, and other custom apps should be
-    able to control your app's player as well. In addition, they should also be
-    able to access and browse the music library (songs, playlists, albums, artists,
+**Requirement 5 (Music-app-specific)**: The controllers listed in Requirement 4, besides
+should also be able to access and browse the music library (songs, playlists, albums, artists,
     etc..) offered by your app.
-  - **Expectation 3**: The app should keep playing in the background even if the
-    user minimizes it, switches to another app, or locks the screen. While it's
-    on the background, the player should still remain controllable from all the
-    places listed above.
     
 If you're knowledgeable in Android development, you'll probably realize that these
 expectations strongly suggest that we need a client-server architecture for our
