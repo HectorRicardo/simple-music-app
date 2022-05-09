@@ -66,23 +66,21 @@ very basic to offering advanced features. However, all media apps, regardless of
 their type and how basic they are, should fulfill these two requirements:
 
 **Requirement 1**: While the app is in the foreground visible to the user, the audio or
-video player should be controllable *to a basic level** not only from the app's UI, but
-also from:
+video player should be controllable* not only from the app's UI, but also from:
   - app's player notification (your app should provide a notification for the player).
   - external media hardware buttons (these are hardware buttons physically found on
     Android devices and other peripheral devices, for example, the pause/play button on
     a Bluetooth headset).
   - Google Assistant.
 
-*What does "*controllable to a basic level*" mean? It means that you can issue to the
-player some of the most common playback commands, such as Play, Pause, Stop, Rewind,
-Fast forward, skip to next, etc..
-
-The places from which an audio or video player is controllable are known as
+*In this context, "controllable" means that you can issue to the player some of the most
+common playback commands, such as Play, Pause, Stop, Rewind, Fast forward, skip to next,
+etc.. The places from which you can control the audio/video player are known as
 **controllers**. The app's UI, the player notification, the external media hardware media
-buttons and the Google Assistant are all examples of controllers. You can program/setup
-your app so your player can receive commands from other controllers, but the ones listed
-here are the minimum-mandatory ones.
+buttons and the Google Assistant are all examples of controllers.
+
+You can program/setup your app so your player can receive commands from other controllers,
+but the ones listed here are the minimum-mandatory ones.
 
 **Requirement 2 (Generic media app)**: A well-designed media app should "play well
 together" with other apps that play audio. It should "take turns" and cooperate with other
@@ -93,25 +91,31 @@ playing at the same time and potentially confusing the user.
     should automatically stop so you can take the call.
     
 These requirements apply to all media apps, whether they're music or video apps, and
-whether they're very basic or offer very advanced functionality.
+whether they're very basic or offer very advanced functionality. But, in addition to these
+requirements, music apps should fulfill the following extra requirements:
 
-In addition to these requirements, music apps should fulfill the following extra
-requirements:
+**Requirement 3 (Music-app-specific)**: The app should keep playing in the background even
+if the user minimizes it, switches to another app, or locks the screen. While it's on the
+background, the player should still remain controllable from the controllers listed in
+Requirement 1.
 
-**Requirement 3 (Music-app-specific)**: The app should keep playing in the
-background even if the user minimizes it, switches to another app, or locks the screen.
-While it's on the background, the player should still remain controllable from the
-controllers listed in Requirement 1.
-
-**Requirement 4 (Music-app-specific)**: Besides the controllers listed in Requirement
-1, the app's music player should also be controllable from
+**Requirement 4 (Music-app-specific)**: Besides the controllers listed in Requirement 1,
+the app's music player should also be controllable from
   - Android Auto
   - Wear OS
   - other custom apps
 
+These controllers should be able to control the player regardless of whether the app is in
+the background or foreground.
+
 **Requirement 5 (Music-app-specific)**: The controllers listed in Requirement 4, besides
-should also be able to access and browse the music library (songs, playlists, albums, artists,
-    etc..) offered by your app.
+controlling the music player, should also be able to access and browse the music library
+content (songs, playlists, albums, artists, etc..) offered by your app.
+
+Ok...we've listed the requirements of our music app. I'll proceed to explain how to
+tackle them, one by one.
+
+We will first approach 
     
 If you're knowledgeable in Android development, you'll probably realize that these
 expectations strongly suggest that we need a client-server architecture for our
@@ -136,211 +140,52 @@ If you're not knowledgeable in Android services, or want a quick refresh in this
 topic, then read the next section for more information about services. Feel free
 to skip the next section if you're already knowledgeable in services.
 
-# Services
+# Tackling Requirement #1 - Using a media session.
 
-A service is an app component that has two features:
+Requirement #1 states that the player should be controllable from these 4 
+controllers:
 
-  - It's able to perform work in the background without needing a UI activity to be
-    visible.
-  - It allows other contexts to bind to it (bind = connect to it) and to receive
-    commands from such contexts. There can be 0, 1, or several contexts bound to a
-    given service.
-    
-The following list of concepts explains how services work and how you can use them
-in your app:
+  - Your app's UI
+  - The app's player notification.
+  - External media hardware buttons
+  - Google Assistant
 
-  - A service is an instance of a subclass that extends the abstract `Service`
-    class.
-  - Services are singletons. That is, given a `Service` concrete subclass, there can
-    exist only one instance of such subclass.
-  - Just as with other app components (such as activities), Android is in charge of
-    managing the lifecycle/lifetime of the singleton service instance. You don't
-    create or destroy a service directly: Android does that instead. The following
-    bullets explain at what point a service is created and destroyed.
-  - You can request Android to:
-      - Send the "Start" command to an instance of a service class.
-      - Bind a context to an instance of a service class.
-  - When receiving these requests, Android first checks if there's already an
-    existing instance of the given `Service` subclass. If not, Android creates it,
-    which executes the service's class `onCreate()` method. Then, now that we
-    guaranteed that there is an instance of the service class, Android proceeds to
-    fulfill these requests.
-  - If you requested Android to send the service the "Start" command:
-      - The service is put in the STARTED state.
-      - The service's `onStartCommand()` method is executed.
-      - The `onStartCommand()` method should begin executing the work that it's
-        meant to be run in the background.
-      - However, even if a service is meant to run in the background, by default
-        it runs in your app's main UI thread. If you need to do time-consuming or
-        heavy-load work, you should delegate that to a new thread.
-      - A service can be sent the "Start" command many times, even if it's already
-        in the STARTED state.
-      - Every time it receives the "Start" command (regardless of whether it is
-        STARTED or not), the service's `onStartCommand()` is executed.
-      - For this reason, you should check for the STARTED state in the
-        `onStartCommand()` method to avoid restarting work that is already currently
-        running.
-      - Once a service is started, you can stop the service. This removes the service
-        from the STARTED state and puts it in the STOPPED state.
-      - Does stopping a service destroy it? Not necessarily. In a few bullet points
-        further below, the conditions to destroy a service are explained.
-  - If you requested Android to bind a context to a service
-      - The service is marked as BOUND, and the context is bound to the service.
-      - If a context is bound to a service, it can send custom, app-specific
-        requests/messages/commands directly to the service, and the service can send
-        responses.
-      - One or several contexts can be bound to the service.
-      - The first time a context binds to the service, the service's `onBind()` method
-        is called. This method returns an interface that will be used by the context
-        to communicate with the service.
-      - However, subsequent bindings to the service don't trigger the `onBind()` method
-        anymore. This is because the result of the `onBind()` method is cached.
-      - You can individually unbind any context previously bound.
-      - If all contexts have unbound from the service, we say that the service is
-        UNBOUND.
-   - A service can be both STARTED and BOUND.
-   - A service is kept alive as long as its STARTED and/or BOUND. That is, a service
-     is destroyed only when it has been stopped and there are no contexts bound to it.
-       - If a service is only STARTED (and not BOUND), it is destroyed as soon as it's
-         stopped.
-       - If a service is only BOUND (and not stopped), it is destroyed as soon as it
-         has no more contexts bound to it.
-       - If a service is both STARTED and BOUND, then only stopping it or only
-         unbinding all of its clients won't destroy it. The service needs to be both
-         STOPPED and UNBOUND.
-   - When the service is destroyed, its `onDestroy()` method is called.
+If you observe carefully, you will realize that out of these 4 controllers, the external media hardware buttons and the Google Assistant live outside your app: that is, their functionality is not tied to your app's code (you didn't program
+their functionality in your app).
 
-We normally use the term *client* to refer to the context/app component that requested
-Android to either send the start command to the service or bind to the service.
+This means that your player has to be reachable/callable from outside of your app's code by these controllers.
 
-# How a service
+Android precisely provides a mechanism to make your player reachable from these external controllers. And for consistency, you should also use this mechanism to make your player controllable from internal controllers as well.
 
-Music apps are implemented with a client-server architecture. In fact, music apps are
-such a very ideal, common, textbook, and practical examples where we can use this
-architecture that Android created two particular classes for them: the
-`MediaBrowserService` (corresponding to the service) and the `MediaBrowser`
-(corresponding to the client).
+This mechanism is the **media session**.
 
-Broadly speaking, this is how a music app with a client-server architecture works:
+A **media session** is a component into which we wrap the player so it is 
+decoupled from the rest of the app. The controllers, whether they are internal 
+or external, will call into this component to send commands to the player and receive updates from it.
 
-  1. You code your app such that the audio player lives inside the
-     `MediaBrowserService` and your activity holds `MediaBrowser` instance (the client).
-  2. Upon app startup, the media browser (client) in your activity binds to the media
-     browser service.
-  3. The media browser can now send a custom, music-app-specific command to the
-     service. For example, it can send a command such as "Play song X".
-  4. The service is started, and the audio player starts playing the requested song.
-  5. The user navigates away from your app. The media browser unbinds, and your
-     activity is stopped/destroyed. However, since your service is STARTED, it remains
-     alive.
-  6. You are able to keep controlling the background player service through other
-     controllers, such as the Google Assistant. This will happen in the same way* that
-     your app's UI controlled the service.
-     
-* Note: due to an Android bug, there's a difference in how the notification and external
-  hardware media buttons communicate with the service. I'll explain this difference in
-  due time.
+You wrap your player into and put it behind a media session, such that your 
+player is totally insulated from the rest of your app. Now, communication to and 
+from the player will happen exclusively through the media session. This means 
+that:
 
-app startup, will bind to your service `
-
-client-service
-
-To meet these expectations, we need to architect our app in 5 overall/general
-steps, which I outline below. I'm gonna be explaining these 5 steps in the next
-sections, so don't worry if they don't make sense in the first read.
-  1. Wrap your player inside a **media session** (that is, abstract your player
-     and put it behind a media session).
-  2. Wrap the media session inside a **media browser service**.
-  3. Define a notification associated to the media session
-  4. Define access permissions to the media browser service.
-  5. Organize your media content library and let the media browser service provide
-     it.
-  6. From your UI activity, connect to the media browser service
-  4. Once your activity is connected to the service, create a
-     **media controller** linked to the media session created in step 1.
-  5. Finally, use the media controller to control (send commands to) the player.
-     (Technically speaking, the media controller sends the commands to the media
-     session, and the latter forwards the commands to the player).
-
-# Step 1. Wrap your player inside a media session
-
-The first expectation listed above states that the player should be controllable
-from several **controlling places**, not only from your own app's UI. To achieve
-this, we need to abstract the player from the rest of your app. That is, we need
-to separate the player into a decoupled Android module that is callable from any
-of the previously listed controlling places.
-
-Hold on...didn't we do that already? Wasn't the initial assumption of this guide
-that the player is already implemented and abstracted, and we just care about
-its API?
-
-Good question. To answer it, we need to clarify that there are two different
-levels of abstractions:
-
-  - The **behavioral-level abstraction**: This is the one we assumed it's
-    already in place. This is simply abstracting out the player's promised
-    behavior and functionality (i.e. its API) from the way it achieves that
-    behavior and functionality (i.e, its implementation).
-    - Something to observe here: this abstraction ideally should be
-      **platform-independent**. That is, the player ideally should expose the
-      same behavior and functionality no matter if we're in Android, iOS,
-      Windows, Linux, etc..
-    - However, the player's implementation can (and most likely will) be
-      platform-dependent (the player will likely have to call into
-      platform-specific frameworks and platform-specific APIs to get the audio
-      media rendered, depending on the platform it lives in). We only care that
-      the player's API is platform-independent.
-    - Once you achieve this level of abstraction, your player will be callable
-      as an independent entity from anywhere *within your app*, but not from
-      outside it.
-  - The **Android-level abstraction**: This is the abstraction that we're
-    interested in this section. It's an Android-specific abstraction. We need
-    to isolate the player into a Android-specific media-player-module so that
-    it's callable from the Android-specific controlling places, some of which
-    are situated *outside* your app.
-    - Since some controlling places are situated outside your player's app's
-      process, the controller-player communication needs to be handled by the OS,
-      rather than by your app.
-    - Thus, the OS needs to be able to identify your player as a callable
-      media-player-module.
-    - Thus, we need to abstract/isolate the player in such a way that it is
-      identified as such by the OS.
-    - Once we achieve this abstraction, the player will be callable from the
-      controlling places, whether they're internal to your app or external to it.
-
-You first achieve the behavioral-level abstraction, and then you work towards
-achieving the Android-level abstraction.
-
-> NOTE: Strictly speaking, it's technically possible to achieve the
-> Android-level abstraction without the behavioral-level one. But that's a very
-> bad practice, and I'm not going to explain that here.
-
-To achieve the Android-level abstraction, we need to separate the player into a 
-decoupled media-player-module. This module is known as a **media session**. You
-wrap your player into and put it behind a media session, such that your player is
-totally insulated from the rest of your app. Communication to and from the player
-will happen exclusively through the media session. This means that:
-
-  - Controlling places wanting to reach your player have to do so via the media
-    session. Controlling places will send player commands to the media session,
-    which in turn will forward these commands to the player.
-  - If your player needs to send event notifications/updates to the controlling
-    places, it does so via the media session. The player will send such
+  - Controllers wanting to reach your player have to do so via the media 
+    session. Controllers will send player commands to the media session, which 
+    in turn will forward these commands to the player.
+  - When your player needs to send event notifications/updates to the 
+    contollers, it does so via the media session. The player will send such
     notifications/updates to the media session, which in turn will forward
-    these updates to the controlling places so they can update their own UI.
+    these updates to the controllerss so they can update their own UI.
     
-The media session is now the one in charge of connecting controlling places to
+The media session is now the one in charge of connecting controllers to
 your player.
 
 This pattern effectively hides your player's API (which it was up to you to
 define) and exposes the media session's API (which Android OS and the
 controlling places already know and agree with). The media session gives your
-player a common, Android-specific universal interface. Thanks to this, any
-controlling place, regardless of whether it is situated inside your app's
-process or outside it, can send commands to and receive updates from your
-player.
+player a common, Android-specific universal interface. Thanks to this, the controllers, whether they are situated inside your app's process or outside it, 
+can send commands to and receive updates from your player.
 
-A media session can connect to multiple controlling places simultaneously,
+A media session can connect to multiple controllers simultaneously,
 meaning that it can receive commands from distinct places in what a user will
 consider the same "user journey". For example, this user journey is possible:
 
@@ -362,8 +207,7 @@ sender of a given command to know how to react to it. For example, the user
 journey above should be equivalent as if all its commands had been issued only
 from your app's UI.
 
-Ok, so we abstracted our player into a media session. Are we done? Not yet,
-this was the first step. Read on.
+Ok, so this is the theory. Let's put these concepts into code.
 
 ## Wrap the media session inside a media browser service.
 
