@@ -46,16 +46,6 @@ exposes some reasonable API. This API might contain methods such as `play()`,
 
 # Splitting up the architecture
 
-> Note before starting: some software development guides/tutorials normally
-introduce code samples/snippets as they present concepts for you to follow along
-and be working in your app's code as you read. Unfortunately, this isn't one of
-those guides. The Android music app architecture is somewhat elaborate, and it's
-difficult to even begin working on the app's code before having first a good
-understading of all the elements the architecture consists of. So instead, I'll
-first introduce these elements in an ordered, logical, and easy-to-follow way,
-and once we have a full understanding of them, we can start working on the app's
-implementation.
-
 To understand the Android music app architecture, we first need to list out the
 requirements/expectations that a music app must fulfill. And before we list out
 these expectations, we first need to have in mind that, in Android, a music app is
