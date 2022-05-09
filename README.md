@@ -44,91 +44,71 @@ exposes some reasonable API. This API might contain methods such as `play()`,
 `pause()`, `skipToNext()`, and might also issue event callbacks such as
 `onSongFinished()`.
 
-# Splitting up the architecture
+# Music app requirements
 
 To understand the Android music app architecture, we first need to list out the
-requirements/expectations that a music app must fulfill. And before we list out
-these expectations, we first need to have in mind that, in Android, a music app is
-actually a special type of a generic **media app**.
+requirements/expectations that a music app must fulfill. 
+
+Before we list out these expectations, we first need to have in mind that, in 
+Android, a music app is actually a special type of a generic **media app**.
 
 A media app is a music/audio app or a video app, and can range from being
 very basic to offering advanced features. However, all media apps, regardless of
 their type and how basic they are, should fulfill these two requirements:
 
-**Requirement 1**: While the app is in the foreground visible to the user, the audio or
-video player should be controllable* not only from the app's UI, but also from:
-  - app's player notification (your app should provide a notification for the player).
-  - external media hardware buttons (these are hardware buttons physically found on
-    Android devices and other peripheral devices, for example, the pause/play button on
-    a Bluetooth headset).
+**Requirement 1**: While the app is in the foreground visible to the user, the 
+audio or video player should be controllable* not only from the app's UI, but 
+also from:
+  - app's player notification (your app should provide a notification for the 
+    player).
+  - external media hardware buttons (these are hardware buttons physically found 
+    on Android devices and other peripheral devices, for example, the pause/play 
+    button on a Bluetooth headset).
   - Google Assistant.
 
-*In this context, "controllable" means that you can issue to the player some of the most
-common playback commands, such as Play, Pause, Stop, Rewind, Fast forward, skip to next,
-etc.. The places from which you can control the audio/video player are known as
-**controllers**. The app's UI, the player notification, the external media hardware media
-buttons and the Google Assistant are all examples of controllers.
+*In this context, "controllable" means that you can issue to the player some of the most common playback commands, such as Play, Pause, Stop, Rewind, Fast forward, skip to next, etc..
 
-You can program/setup your app so your player can receive commands from other controllers,
-but the ones listed here are the minimum-mandatory ones.
+The places from which you can control the audio/video player are known as
+**controllers**. The app's UI, the player notification, the external media hardware media buttons and the Google Assistant are all examples of controllers.
 
-**Requirement 2 (Generic media app)**: A well-designed media app should "play well
-together" with other apps that play audio. It should "take turns" and cooperate with other
-apps on your device that use the audio output stream. It should stop playing the audio or
-video when another app starts playing audio. This is to avoid having two audio streams
-playing at the same time and potentially confusing the user.
-  - For example, if a phone call comes in while you're listening to music, the player
-    should automatically stop so you can take the call.
+You can program/setup your app so your player can receive commands from other controllers, but the ones listed here are the minimum-mandatory ones.
+
+**Requirement 2 (Generic media app)**: A well-designed media app should "play 
+well together" with other apps that play audio. It should "take turns" and 
+cooperate with other apps on your device that use the audio output stream. It 
+should stop playing the audio or video when another app starts playing audio. 
+This is to avoid having two audio streams playing at the same time and 
+potentially confusing the user. For example, if a phone call comes in while 
+you're listening to music, the player should automatically stop so you can take 
+the call.
     
-These requirements apply to all media apps, whether they're music or video apps, and
-whether they're very basic or offer very advanced functionality. But, in addition to these
-requirements, music apps should fulfill the following extra requirements:
+These requirements apply to all media apps, whether they're music or video apps, 
+and whether they're very basic or offer very advanced functionality.
 
-**Requirement 3 (Music-app-specific)**: The app should keep playing in the background even
-if the user minimizes it, switches to another app, or locks the screen. While it's on the
-background, the player should still remain controllable from the controllers listed in
-Requirement 1.
+In addition to these requirements, music apps should fulfill the following extra 
+requirements:
 
-**Requirement 4 (Music-app-specific)**: Besides the controllers listed in Requirement 1,
-the app's music player should also be controllable from
+**Requirement 3 (Music-app-specific)**: The app should keep playing in the 
+background even if the user minimizes it, switches to another app, or locks the 
+screen. While it's on the background, the player should still remain 
+controllable from the controllers listed in Requirement 1.
+
+**Requirement 4 (Music-app-specific)**: Besides the controllers listed in 
+Requirement 1, the app's music player should also be controllable from
   - Android Auto
   - Wear OS
   - other custom apps
 
-These controllers should be able to control the player regardless of whether the app is in
-the background or foreground.
+These controllers should be able to control the player regardless of whether the 
+app is in the background or foreground.
 
-**Requirement 5 (Music-app-specific)**: The controllers listed in Requirement 4, besides
-controlling the music player, should also be able to access and browse the music library
-content (songs, playlists, albums, artists, etc..) offered by your app.
+**Requirement 5 (Music-app-specific)**: The controllers listed in Requirement 4, 
+besides controlling the music player, should also be able to access and browse 
+the music library content (songs, playlists, albums, artists, etc..) offered by 
+your app.
 
-Ok...we've listed the requirements of our music app. I'll proceed to explain how to
-tackle them, one by one.
-
-We will first approach 
-    
-If you're knowledgeable in Android development, you'll probably realize that these
-expectations strongly suggest that we need a client-server architecture for our
-app. This is because:
-
-  - A service is used to perform work in the background while the app is
-    minimized. If our player lives inside a service, then this will fulfill the
-    third expectation.
-  - A client can send commands/requests to the service and communicate with it.
-    If we consider clients to be the controllers listed in Expectation 1 and 2,
-    then this fulfills said expectations.
-    
-
-
-However, before explaining the architecture, there's a detail: Android considers
-music apps as a specialization of generic "media apps". A media app is an audio app
-or a video app.
-expectations are a subset of the music app's expectations. Out of the expectations
-of the music app, these are the expectations that apply to the most basic media app:
-    
-If you're not knowledgeable in Android services, or want a quick refresh in this
-topic, then read the next section for more information about services. Feel free
-to skip the next section if you're already knowledgeable in services.
+Now that we've listed the requirements of our music app. I'll proceed to explain 
+how to tackle them, one by one.
 
 # Tackling Requirement #1 - Using a media session.
 
@@ -145,18 +125,17 @@ their functionality in your app).
 
 This means that your player has to be reachable/callable from outside of your app's code by these controllers.
 
-Android precisely provides a mechanism to make your player reachable from these external controllers. And for consistency, you should also use this mechanism to make your player controllable from internal controllers as well.
+Android precisely provides a mechanism to make your player reachable from these external controllers. For consistency, you should also use this mechanism to make your player controllable from internal controllers as well.
 
 This mechanism is the **media session**.
 
 A **media session** is a component into which we wrap the player so it is 
 decoupled from the rest of the app. The controllers, whether they are internal 
-or external, will call into this component to send commands to the player and receive updates from it.
+or external, will call into the media session (instead of calling directly the player) to send commands to the player and receive updates from it.
 
 You wrap your player into and put it behind a media session, such that your 
 player is totally insulated from the rest of your app. Now, communication to and 
-from the player will happen exclusively through the media session. This means 
-that:
+from the player will happen exclusively through the media session:
 
   - Controllers wanting to reach your player have to do so via the media 
     session. Controllers will send player commands to the media session, which 
@@ -172,15 +151,17 @@ your player.
 This pattern effectively hides your player's API (which it was up to you to
 define) and exposes the media session's API (which Android OS and the
 controlling places already know and agree with). The media session gives your
-player a common, Android-specific universal interface. Thanks to this, the controllers, whether they are situated inside your app's process or outside it, 
-can send commands to and receive updates from your player.
+player a common, Android-specific universal interface. Thanks to this, the four 
+controllers listed on Requirement 1, whether they are situated inside your app's 
+process or outside it, can send commands to and receive updates from your 
+player.
 
-A media session can connect to multiple controllers simultaneously,
-meaning that it can receive commands from distinct places in what a user will
-consider the same "user journey". For example, this user journey is possible:
+A media session can connect to multiple controllers simultaneously, meaning that 
+it can receive commands from distinct places in what a user will consider the 
+same "user journey". For example, this user journey is possible:
 
-  1. You issue a "play" command from your app's UI (controller 1). This plays
-     song "A".
+  1. You issue a "play" command from your app's UI (controller 1). Let's say 
+     this plays song "A".
   3. You pause the player through the player's notification bar (controller 2).
      This pauses the same song "A" you started in step 1.
   3. You skip to the next song through the Google Assistant (controller 3).
@@ -197,7 +178,7 @@ sender of a given command to know how to react to it. For example, the user
 journey above should be equivalent as if all its commands had been issued only
 from your app's UI.
 
-Ok, so this is the theory. Let's put these concepts into code.
+That's the theory behind how we fulfill Requirement 1. Let's put this theory into code.
 
 ## Wrap the media session inside a media browser service.
 
